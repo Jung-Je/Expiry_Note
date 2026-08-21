@@ -6,11 +6,17 @@ Django + Django REST Framework 기반 API 서버입니다. 패키지/가상환�
 
 - Python 3.12
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
-- Supabase 프로젝트 (DB + Auth/Storage). 로컬 개발도 별도 로컬 DB 없이 이 프로젝트에 바로 연결합니다.
+- Docker / Docker Compose (로컬 PostgreSQL 실행용)
 
 ## 로컬 개발 환경 설정
 
-1. Supabase 프로젝트가 아직 없다면 먼저 만듭니다. [Supabase 연동 가이드](../docs/supabase-setup.md)를 참고하세요.
+1. 저장소 루트에서 PostgreSQL 컨테이너를 실행합니다.
+
+   ```bash
+   docker compose up -d db
+   ```
+
+   기본적으로 호스트의 `5433` 포트로 노출됩니다(로컬에 5432를 쓰는 다른 Postgres가 있을 수 있어 충돌을 피하기 위함).
 
 2. `backend/` 디렉터리에서 환경 변수 파일을 준비합니다.
 
@@ -19,7 +25,7 @@ Django + Django REST Framework 기반 API 서버입니다. 패키지/가상환�
    cp .env.example .env
    ```
 
-   Supabase 대시보드에서 확인한 `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` 값을 채워 넣으세요. `.env`는 git에 커밋되지 않습니다.
+   필요에 맞게 `.env` 값을 수정하세요. `.env`는 git에 커밋되지 않습니다.
 
 3. 의존성을 설치합니다.
 
@@ -46,20 +52,6 @@ Django + Django REST Framework 기반 API 서버입니다. 패키지/가상환�
    # {"status": "ok"}
    ```
 
-## Supabase 사용
-
-- **DB**: Django ORM은 그대로 사용합니다. `DATABASE_URL`이 Supabase의 Postgres를 가리킬 뿐, 모델/마이그레이션 작성 방식은 바뀌지 않습니다.
-- **Auth/Storage 등 DB 밖의 Supabase 기능**: `apps.core.services`의 클라이언트 헬퍼를 사용합니다.
-
-  ```python
-  from apps.core.services import get_supabase_client, get_supabase_admin_client
-
-  supabase = get_supabase_client()        # anon key, RLS 적용됨
-  supabase_admin = get_supabase_admin_client()  # service role key, RLS 우회 — 서버 전용
-  ```
-
-  `get_supabase_admin_client()`의 결과나 service role key는 절대 웹/앱 클라이언트로 내려주지 않습니다.
-
 ## 자주 쓰는 명령어
 
 ```bash
@@ -79,7 +71,7 @@ backend/
 ├── config/          # Django 프로젝트 설정 (settings, urls, wsgi/asgi)
 ├── apps/            # 도메인별 Django 앱 모음
 │   ├── _template/    # 새 앱을 만들 때 복사해서 시작하는 템플릿
-│   └── core/         # 헬스 체크, Supabase 클라이언트 등 공통 기능
+│   └── core/         # 헬스 체크 등 공통 기능
 ├── manage.py
 ├── pyproject.toml   # uv/ruff/pytest 설정
 └── .env.example

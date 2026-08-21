@@ -82,25 +82,15 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-# Points at the project's Supabase Postgres instance (local dev included —
-# there is no local Postgres container). Set DATABASE_URL in .env; see
-# backend/README.md for where to find it in the Supabase dashboard.
+# Local dev defaults to the Postgres container from docker-compose.yml;
+# override DATABASE_URL in .env to point elsewhere.
 
 DATABASES = {
-    "default": env.db("DATABASE_URL"),
+    "default": env.db(
+        "DATABASE_URL",
+        default="postgres://expiry_note:expiry_note@localhost:5433/expiry_note",
+    ),
 }
-
-
-# Supabase
-# https://supabase.com/docs/reference/python/introduction
-# Used for Supabase features accessed outside the DB connection itself
-# (Auth admin actions, Storage, etc.) via the `supabase` client library.
-# SUPABASE_SERVICE_ROLE_KEY bypasses Row Level Security — backend-only,
-# never expose it to the web/mobile clients.
-
-SUPABASE_URL = env("SUPABASE_URL", default="")
-SUPABASE_ANON_KEY = env("SUPABASE_ANON_KEY", default="")
-SUPABASE_SERVICE_ROLE_KEY = env("SUPABASE_SERVICE_ROLE_KEY", default="")
 
 
 # Password validation
