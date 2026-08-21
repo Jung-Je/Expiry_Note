@@ -168,10 +168,12 @@ MVP에서는 우선순위에서 제외하며, 출시 이후 다음 기능과 함
 - Python
 - Django
 - Django REST Framework
+- uv (패키지 및 가상환경 관리)
 
 ### 데이터베이스 및 인프라
 
-- 추후 확정
+- 로컬 개발: PostgreSQL (Docker Compose)
+- 프로덕션 인프라: 추후 확정
 
 ### 웹 프론트엔드
 
@@ -180,6 +182,21 @@ MVP에서는 우선순위에서 제외하며, 출시 이후 다음 기능과 함
 ### 모바일 앱
 
 - 추후 확정
+
+## 프로젝트 구조
+
+모노레포로 관리하며, 스택이 확정된 영역부터 순차적으로 채워 나갑니다.
+
+```
+Expiry_Note/
+├── backend/     # Django + DRF API 서버 (uv 관리)
+├── frontend/    # 웹 프론트엔드 (스택 미정)
+├── mobile/      # 모바일 앱 (스택 미정)
+├── docs/        # 기능 명세서, API 명세서 등 프로젝트 문서
+└── docker-compose.yml  # 로컬 개발용 PostgreSQL
+```
+
+백엔드 개발 환경 설정은 [backend/README.md](backend/README.md)를 참고하세요.
 
 ## 프로젝트 목표
 

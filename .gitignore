@@ -1,0 +1,31 @@
+# --- Python / Django (backend/) ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+db.sqlite3
+staticfiles/
+media/
+.pytest_cache/
+.ruff_cache/
+
+# --- Env files ---
+.env
+.env.*
+!.env.example
+
+# --- Node / frontend (frontend/) ---
+node_modules/
+dist/
+build/
+.next/
+.expo/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+
+# --- uv ---
+uv.lock.bak
