@@ -10,6 +10,7 @@ from datetime import timedelta
 
 from django.db.models import QuerySet
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from apps.items.models import UPCOMING_WITHIN_DAYS, URGENT_WITHIN_DAYS, ExpiryItem
 
@@ -20,12 +21,21 @@ def filter_items(
     category: str | None = None,
     status: str | None = None,
     search: str | None = None,
+    date: str | None = None,
 ) -> QuerySet[ExpiryItem]:
     if category:
         queryset = queryset.filter(category=category)
 
     if search:
         queryset = queryset.filter(title__icontains=search)
+
+    if date:
+        # Same "ignore, don't error" treatment as an unrecognized category/
+        # status below — a malformed date just means no date filter is
+        # applied, not a 500 from the DB layer.
+        parsed_date = parse_date(date)
+        if parsed_date:
+            queryset = queryset.filter(expiry_date=parsed_date)
 
     if status:
         today = timezone.localdate()

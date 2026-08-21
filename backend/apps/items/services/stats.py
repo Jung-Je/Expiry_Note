@@ -12,15 +12,9 @@ from datetime import date
 from django.db.models import QuerySet, Sum
 
 from apps.items.models import ExpiryItem
+from apps.items.services.dates import add_months
 
 MONTHLY_AMOUNT_MONTHS_AHEAD = 6
-
-
-def _add_months(day: date, months: int) -> date:
-    month_index = day.month - 1 + months
-    year = day.year + month_index // 12
-    month = month_index % 12 + 1
-    return day.replace(year=year, month=month, day=1)
 
 
 def _monthly_amounts(queryset: QuerySet[ExpiryItem], *, today: date) -> list[dict]:
@@ -28,8 +22,8 @@ def _monthly_amounts(queryset: QuerySet[ExpiryItem], *, today: date) -> list[dic
     this_month_start = today.replace(day=1)
     months = []
     for offset in range(MONTHLY_AMOUNT_MONTHS_AHEAD):
-        month_start = _add_months(this_month_start, offset)
-        month_end = _add_months(this_month_start, offset + 1)
+        month_start = add_months(this_month_start, offset)
+        month_end = add_months(this_month_start, offset + 1)
         total = (
             queryset.filter(expiry_date__gte=month_start, expiry_date__lt=month_end).aggregate(
                 total=Sum("amount")
