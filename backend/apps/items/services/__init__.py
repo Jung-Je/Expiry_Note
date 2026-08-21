@@ -1,5 +1,7 @@
 from apps.items.services.expiry_item import filter_items
+from apps.items.services.stats import get_item_stats
 
 __all__ = [
     "filter_items",
+    "get_item_stats",
 ]
