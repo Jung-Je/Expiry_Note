@@ -1,0 +1,43 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { AppLayout } from './components/layout/AppLayout'
+import { AuthProvider } from './features/auth/AuthContext'
+import { ProtectedRoute } from './features/auth/ProtectedRoute'
+import { DashboardPage } from './pages/DashboardPage'
+import { ItemDetailPage } from './pages/ItemDetailPage'
+import { ItemFormPage } from './pages/ItemFormPage'
+import { LoginPage } from './pages/auth/LoginPage'
+import { PricingPage } from './pages/PricingPage'
+import { SchedulePage } from './pages/SchedulePage'
+import { SettingsPage } from './pages/SettingsPage'
+import { SignupPage } from './pages/auth/SignupPage'
+import { StatsPage } from './pages/StatsPage'
+
+const queryClient = new QueryClient()
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AppLayout />}>
+                <Route path="/" element={<DashboardPage />} />
+                <Route path="/schedule" element={<SchedulePage />} />
+                <Route path="/items/new" element={<ItemFormPage />} />
+                <Route path="/items/:id" element={<ItemDetailPage />} />
+                <Route path="/stats" element={<StatsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/pricing" element={<PricingPage />} />
+              </Route>
+            </Route>
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+  )
+}

@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gray-on-color",
+        "value": "text-slate-300",
+        "files": [
+          "src/components/layout/AppLayout.tsx"
+        ],
+        "createdAt": "2026-08-21T06:11:24.130Z",
+        "reason": "false positive: slate-300 text sits on near-black slate-950 sidebar background (~15:1 contrast), not a mid-tone colored background — standard high-contrast sidebar nav pattern"
+      }
+    ]
+  }
+}
