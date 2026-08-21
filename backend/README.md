@@ -18,14 +18,15 @@ Django + Django REST Framework 기반 API 서버입니다. 패키지/가상환�
 
    기본적으로 호스트의 `5433` 포트로 노출됩니다(로컬에 5432를 쓰는 다른 Postgres가 있을 수 있어 충돌을 피하기 위함).
 
-2. `backend/` 디렉터리에서 환경 변수 파일을 준비합니다.
+2. `backend/` 디렉터리로 이동합니다.
 
    ```bash
    cd backend
-   cp .env.example .env
    ```
 
-   필요에 맞게 `.env` 값을 수정하세요. `.env`는 git에 커밋되지 않습니다.
+   환경 변수는 `.envs/.env.dev`에 이미 로컬 개발용 기본값이 커밋되어 있어 따로 준비할 필요가 없습니다. 필요하면 이 파일 값을 직접 수정하세요.
+
+   실제 배포에 준하는 설정으로 로컬에서 테스트하려면 `.envs/.env.prod`를 만들고(gitignore됨, 커밋되지 않음) `DJANGO_ENV_FILE=.env.prod uv run python manage.py runserver`처럼 실행하세요. 실제 배포 환경에서는 이 파일 대신 진짜 환경 변수를 직접 주입합니다.
 
 3. 의존성을 설치합니다.
 
@@ -75,7 +76,9 @@ backend/
 │   └── accounts/     # 회원 인증 (이메일 가입/로그인, 카카오 로그인 등)
 ├── manage.py
 ├── pyproject.toml   # uv/ruff/pytest 설정
-└── .env.example
+└── .envs/
+    ├── .env.dev      # 로컬 개발 기본값 (커밋됨)
+    └── .env.prod     # 배포 준하는 설정 테스트용 (gitignore, 필요 시 직접 생성)
 ```
 
 새 도메인 앱은 `apps/` 아래에 추가합니다. 예: `apps/items`, `apps/schedules`, `apps/notifications`.

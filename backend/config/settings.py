@@ -8,6 +8,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import os
 from datetime import timedelta
 from pathlib import Path
 
@@ -19,8 +20,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(
     DEBUG=(bool, False),
 )
-# .env is optional (e.g. in CI/production, real env vars are used instead).
-environ.Env.read_env(BASE_DIR / ".env")
+# Which file under .envs/ to load. Defaults to the committed dev defaults;
+# set DJANGO_ENV_FILE=.env.prod to load .envs/.env.prod instead (gitignored,
+# create it locally to test with prod-like config). The file is optional —
+# a real deployment sets real environment variables directly and doesn't
+# need either file.
+DJANGO_ENV_FILE = os.environ.get("DJANGO_ENV_FILE", ".env.dev")
+environ.Env.read_env(BASE_DIR / ".envs" / DJANGO_ENV_FILE)
 
 # Base URL of the web frontend (no trailing slash) — used to build links
 # inside emails (email verification, password reset).

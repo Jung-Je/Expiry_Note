@@ -11,9 +11,11 @@ media/
 .ruff_cache/
 
 # --- Env files ---
+# Only .envs/.env.dev is committed (safe local defaults); everything else
+# (.envs/.env.prod, or a stray .env/.env.local outside .envs/) stays local.
 .env
 .env.*
-!.env.example
+!**/.envs/.env.dev
 
 # --- Node / frontend (frontend/) ---
 node_modules/

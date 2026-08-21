@@ -21,13 +21,7 @@ Vite + React + TypeScript 기반 SPA입니다. 백엔드(Django + DRF)와는 완
    npm install
    ```
 
-3. 환경 변수 파일 준비
-
-   ```bash
-   cp .env.example .env.local
-   ```
-
-   `VITE_API_BASE_URL`이 실행 중인 백엔드 주소를 가리키는지 확인하세요 (기본값 `http://localhost:8000/api/v1`).
+3. 환경 변수는 `.envs/.env.dev`에 이미 로컬 개발용 기본값(`VITE_API_BASE_URL=http://localhost:8000/api/v1`)이 커밋되어 있어 따로 준비할 필요가 없습니다. 백엔드를 다른 포트로 띄웠다면 이 파일 값을 직접 수정하세요.
 
 4. 개발 서버 실행
 
@@ -35,13 +29,13 @@ Vite + React + TypeScript 기반 SPA입니다. 백엔드(Django + DRF)와는 완
    npm run dev
    ```
 
-   `http://localhost:5173`에서 확인할 수 있습니다.
+   `http://localhost:5173`에서 확인할 수 있습니다. (`npm run dev`는 내부적으로 `vite --mode dev`를 실행해 `.envs/.env.dev`를 읽습니다.)
 
 ## 자주 쓰는 명령어
 
 ```bash
 npm run dev       # 개발 서버 (HMR)
-npm run build     # 타입 체크 + 프로덕션 빌드
+npm run build     # 타입 체크 + 프로덕션 빌드 (.envs/.env.prod 사용, 없으면 직접 생성)
 npm run lint      # oxlint
 npm run preview   # 빌드 결과 미리보기
 ```
