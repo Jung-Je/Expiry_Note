@@ -50,3 +50,22 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 class KakaoLoginSerializer(serializers.Serializer):
     access_token = serializers.CharField()
+
+
+class UpdateProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["name"]
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+
+    def validate_new_password(self, value: str) -> str:
+        validate_password(value)
+        return value
+
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField()

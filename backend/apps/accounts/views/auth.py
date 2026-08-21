@@ -2,27 +2,34 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from apps.accounts.serializers import (
+    ChangePasswordSerializer,
     EmailTokenObtainPairSerializer,
     EmailVerificationConfirmSerializer,
     KakaoLoginSerializer,
+    LogoutSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     SignupSerializer,
+    UpdateProfileSerializer,
     UserSerializer,
 )
 from apps.accounts.services import (
+    InvalidCurrentPassword,
     InvalidKakaoToken,
     InvalidResetToken,
     InvalidVerificationToken,
+    change_password,
     confirm_password_reset,
     get_or_create_kakao_user,
     request_password_reset,
     signup,
     verify_email,
+    withdraw,
 )
 
 
@@ -50,6 +57,46 @@ class MeView(APIView):
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+    def patch(self, request):
+        serializer = UpdateProfileSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(UserSerializer(request.user).data)
+
+    def delete(self, request):
+        withdraw(request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            change_password(request.user, **serializer.validated_data)
+        except InvalidCurrentPassword:
+            return Response(
+                {"detail": "현재 비밀번호가 올바르지 않습니다."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response({"detail": "비밀번호가 변경되었습니다."})
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = LogoutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            RefreshToken(serializer.validated_data["refresh"]).blacklist()
+        except TokenError:
+            return Response(
+                {"detail": "유효하지 않은 토큰입니다."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class EmailVerificationConfirmView(APIView):

@@ -1,7 +1,9 @@
 from apps.accounts.views.auth import (
+    ChangePasswordView,
     EmailVerificationConfirmView,
     KakaoLoginView,
     LoginView,
+    LogoutView,
     MeView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
@@ -9,9 +11,11 @@ from apps.accounts.views.auth import (
 )
 
 __all__ = [
+    "ChangePasswordView",
     "EmailVerificationConfirmView",
     "KakaoLoginView",
     "LoginView",
+    "LogoutView",
     "MeView",
     "PasswordResetConfirmView",
     "PasswordResetRequestView",
