@@ -6,19 +6,11 @@ Django + Django REST Framework 기반 API 서버입니다. 패키지/가상환�
 
 - Python 3.12
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
-- Docker / Docker Compose (로컬 PostgreSQL 실행용)
+- 로컬에 설치된 PostgreSQL (pgAdmin4 등으로 직접 관리). `expiry_note_dev`, `expiry_note_prod` 두 데이터베이스를 미리 만들어둡니다.
 
 ## 로컬 개발 환경 설정
 
-1. 저장소 루트에서 PostgreSQL 컨테이너를 실행합니다.
-
-   ```bash
-   docker compose up -d db
-   ```
-
-   기본적으로 호스트의 `5433` 포트로 노출됩니다(로컬에 5432를 쓰는 다른 Postgres가 있을 수 있어 충돌을 피하기 위함).
-
-2. `backend/` 디렉터리에서 환경 변수 파일 `.envs/.env.dev`를 직접 만듭니다. `.envs/` 아래 파일은 (`.env.dev`, `.env.prod` 등) git에 전혀 커밋되지 않으므로, 아래 내용을 복사해서 로컬에 새로 만들어야 합니다.
+1. `backend/` 디렉터리에서 환경 변수 파일 `.envs/.env.dev`를 직접 만듭니다. `.envs/` 아래 파일은 (`.env.dev`, `.env.prod` 등) git에 전혀 커밋되지 않으므로, 아래 내용을 복사해서 로컬에 새로 만들어야 합니다.
 
    ```bash
    cd backend
@@ -32,8 +24,14 @@ Django + Django REST Framework 기반 API 서버입니다. 패키지/가상환�
    DJANGO_DEBUG=True
    DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
 
-   # Matches the default `db` service in the root docker-compose.yml.
-   DATABASE_URL=postgres://expiry_note:expiry_note@localhost:5433/expiry_note
+   # 로컬 PostgreSQL(pgAdmin4로 관리)의 expiry_note_dev 데이터베이스.
+   DB_ENGINE=django.db.backends.postgresql
+   DB_NAME=expiry_note_dev
+   DB_USER=<계정>
+   DB_PASSWORD=<비밀번호>
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_CONN_MAX_AGE=60
 
    # Web frontend origin(s) allowed to call this API (comma-separated).
    CORS_ALLOWED_ORIGINS=http://localhost:5173
@@ -45,27 +43,27 @@ Django + Django REST Framework 기반 API 서버입니다. 패키지/가상환�
    DEFAULT_FROM_EMAIL=no-reply@expirynote.local
    ```
 
-   실제 배포에 준하는 설정으로 로컬에서 테스트하려면 같은 키를 채운 `.envs/.env.prod`를 만들고 `DJANGO_ENV_FILE=.env.prod uv run python manage.py runserver`처럼 실행하세요. 실제 배포 환경에서는 이 파일 대신 진짜 환경 변수를 직접 주입합니다.
+   실제 배포에 준하는 설정으로 로컬에서 테스트하려면 `DB_NAME`을 `expiry_note_prod`로 바꾼 `.envs/.env.prod`를 만들고 `DJANGO_ENV_FILE=.env.prod uv run python manage.py runserver`처럼 실행하세요. 실제 배포 환경에서는 이 파일 대신 진짜 환경 변수를 직접 주입합니다.
 
-3. 의존성을 설치합니다.
+2. 의존성을 설치합니다.
 
    ```bash
    uv sync
    ```
 
-4. 마이그레이션을 실행합니다.
+3. 마이그레이션을 실행합니다.
 
    ```bash
    uv run python manage.py migrate
    ```
 
-5. 개발 서버를 실행합니다.
+4. 개발 서버를 실행합니다.
 
    ```bash
    uv run python manage.py runserver
    ```
 
-6. 헬스 체크로 정상 동작을 확인합니다.
+5. 헬스 체크로 정상 동작을 확인합니다.
 
    ```bash
    curl http://127.0.0.1:8000/api/v1/health/

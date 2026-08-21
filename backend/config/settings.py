@@ -102,14 +102,20 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-# Local dev defaults to the Postgres container from docker-compose.yml;
-# override DATABASE_URL in .env to point elsewhere.
+# 실제 값은 .envs/.env.dev(또는 .env.prod)의 DB_* 변수에서 온다. 아래
+# 기본값은 그 변수들이 없을 때만 쓰이는 fallback이라 실제로 접속 가능할
+# 필요는 없다.
 
 DATABASES = {
-    "default": env.db(
-        "DATABASE_URL",
-        default="postgres://expiry_note:expiry_note@localhost:5433/expiry_note",
-    ),
+    "default": {
+        "ENGINE": env("DB_ENGINE", default="django.db.backends.postgresql"),
+        "NAME": env("DB_NAME", default="expiry_note_dev"),
+        "USER": env("DB_USER", default="postgres"),
+        "PASSWORD": env("DB_PASSWORD", default=""),
+        "HOST": env("DB_HOST", default="localhost"),
+        "PORT": env("DB_PORT", default="5432"),
+        "CONN_MAX_AGE": env.int("DB_CONN_MAX_AGE", default=60),
+    },
 }
 
 
