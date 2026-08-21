@@ -18,15 +18,34 @@ Django + Django REST Framework 기반 API 서버입니다. 패키지/가상환�
 
    기본적으로 호스트의 `5433` 포트로 노출됩니다(로컬에 5432를 쓰는 다른 Postgres가 있을 수 있어 충돌을 피하기 위함).
 
-2. `backend/` 디렉터리로 이동합니다.
+2. `backend/` 디렉터리에서 환경 변수 파일 `.envs/.env.dev`를 직접 만듭니다. `.envs/` 아래 파일은 (`.env.dev`, `.env.prod` 등) git에 전혀 커밋되지 않으므로, 아래 내용을 복사해서 로컬에 새로 만들어야 합니다.
 
    ```bash
    cd backend
+   mkdir -p .envs
    ```
 
-   환경 변수는 `.envs/.env.dev`에 이미 로컬 개발용 기본값이 커밋되어 있어 따로 준비할 필요가 없습니다. 필요하면 이 파일 값을 직접 수정하세요.
+   `.envs/.env.dev`:
 
-   실제 배포에 준하는 설정으로 로컬에서 테스트하려면 `.envs/.env.prod`를 만들고(gitignore됨, 커밋되지 않음) `DJANGO_ENV_FILE=.env.prod uv run python manage.py runserver`처럼 실행하세요. 실제 배포 환경에서는 이 파일 대신 진짜 환경 변수를 직접 주입합니다.
+   ```env
+   DJANGO_SECRET_KEY=change-me-to-a-random-secret-key
+   DJANGO_DEBUG=True
+   DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+
+   # Matches the default `db` service in the root docker-compose.yml.
+   DATABASE_URL=postgres://expiry_note:expiry_note@localhost:5433/expiry_note
+
+   # Web frontend origin(s) allowed to call this API (comma-separated).
+   CORS_ALLOWED_ORIGINS=http://localhost:5173
+   # Base URL of the web frontend, used to build links inside emails.
+   FRONTEND_URL=http://localhost:5173
+
+   # Prints emails to the runserver console instead of actually sending them.
+   EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+   DEFAULT_FROM_EMAIL=no-reply@expirynote.local
+   ```
+
+   실제 배포에 준하는 설정으로 로컬에서 테스트하려면 같은 키를 채운 `.envs/.env.prod`를 만들고 `DJANGO_ENV_FILE=.env.prod uv run python manage.py runserver`처럼 실행하세요. 실제 배포 환경에서는 이 파일 대신 진짜 환경 변수를 직접 주입합니다.
 
 3. 의존성을 설치합니다.
 
@@ -76,9 +95,9 @@ backend/
 │   └── accounts/     # 회원 인증 (이메일 가입/로그인, 카카오 로그인 등)
 ├── manage.py
 ├── pyproject.toml   # uv/ruff/pytest 설정
-└── .envs/
-    ├── .env.dev      # 로컬 개발 기본값 (커밋됨)
-    └── .env.prod     # 배포 준하는 설정 테스트용 (gitignore, 필요 시 직접 생성)
+└── .envs/           # git에 커밋되지 않음 — 필요한 키는 이 README에 문서화
+    ├── .env.dev      # 로컬 개발용, 직접 생성
+    └── .env.prod     # 배포 준하는 설정 테스트용, 직접 생성
 ```
 
 새 도메인 앱은 `apps/` 아래에 추가합니다. 예: `apps/items`, `apps/schedules`, `apps/notifications`.

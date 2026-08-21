@@ -5,10 +5,11 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  // Env files live in .envs/ (.env.dev committed, .env.prod gitignored)
-  // instead of Vite's usual project-root .env/.env.local. Paired with the
-  // `--mode dev` / `--mode prod` flags in package.json scripts, so Vite
-  // looks for .envs/.env.dev and .envs/.env.prod respectively.
+  // 환경 변수 파일은 Vite 기본 위치(프로젝트 루트의 .env/.env.local) 대신
+  // .envs/ 아래에 둔다. .env.dev, .env.prod 둘 다 커밋되지 않으므로 필요한
+  // 키는 README.md를 참고. package.json 스크립트의 `--mode dev` /
+  // `--mode prod` 플래그와 짝을 이뤄, Vite가 각각 .envs/.env.dev와
+  // .envs/.env.prod를 읽도록 한다.
   envDir: './.envs',
   server: {
     port: 5173,

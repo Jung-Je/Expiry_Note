@@ -20,11 +20,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(
     DEBUG=(bool, False),
 )
-# Which file under .envs/ to load. Defaults to the committed dev defaults;
-# set DJANGO_ENV_FILE=.env.prod to load .envs/.env.prod instead (gitignored,
-# create it locally to test with prod-like config). The file is optional —
-# a real deployment sets real environment variables directly and doesn't
-# need either file.
+# .envs/ 아래 어떤 파일을 읽을지 결정한다. 기본값은 .env.dev이고,
+# DJANGO_ENV_FILE=.env.prod로 설정하면 .envs/.env.prod를 읽는다. 둘 다
+# 커밋되지 않으므로 필요한 키는 README.md 참고. 이 파일은 선택 사항이다 —
+# 실제 배포 환경에서는 파일 대신 진짜 환경 변수를 직접 주입한다.
 DJANGO_ENV_FILE = os.environ.get("DJANGO_ENV_FILE", ".env.dev")
 environ.Env.read_env(BASE_DIR / ".envs" / DJANGO_ENV_FILE)
 
