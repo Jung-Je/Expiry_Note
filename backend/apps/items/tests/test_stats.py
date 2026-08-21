@@ -71,8 +71,8 @@ class TestGetItemStats:
     def test_monthly_amounts_covers_six_months_from_this_month(self, user):
         _make_item(user, title="this month", days_from_today=1, amount=5000)
         _make_item(user, title="next month", days_from_today=35, amount=7000)
-        _make_item(user, title="far future", days_from_today=400, amount=99999)  # out of range
-        # last month, out of the 6-month window
+        _make_item(user, title="far future", days_from_today=400, amount=99999)  # 범위 밖
+        # 지난달 — 6개월 범위 밖
         _make_item(user, title="past", days_from_today=-30, amount=12345)
 
         stats = get_item_stats(user, today=TODAY)

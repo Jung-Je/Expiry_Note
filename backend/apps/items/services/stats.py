@@ -1,9 +1,9 @@
-"""Aggregate stats over a user's expiry items, for the 통계 screen.
+"""통계 화면용 — 사용자의 만료 항목을 집계한다.
 
-`status` is a computed (non-DB) property, so category/monthly totals are
-done with querysets but the status breakdown is tallied in Python. That's
-fine at MVP per-user item counts; if this ever needs to scale, `status`
-would need to become a DB-backed field (or annotated with date math) first.
+`status`는 계산된(DB에 없는) 속성이라, 유형별/월별 합계는 쿼리셋으로
+처리하지만 status별 집계는 Python에서 센다. MVP 수준의 사용자당 항목
+수에서는 문제없지만, 나중에 규모가 커지면 `status`를 DB 필드로
+바꾸거나(또는 날짜 계산으로 annotate) 해야 한다.
 """
 
 from collections import Counter
@@ -18,7 +18,7 @@ MONTHLY_AMOUNT_MONTHS_AHEAD = 6
 
 
 def _monthly_amounts(queryset: QuerySet[ExpiryItem], *, today: date) -> list[dict]:
-    """Sum of `amount` per calendar month of `expiry_date`, starting this month."""
+    """이번 달부터 `expiry_date`의 월별로 `amount`를 합산한다."""
     this_month_start = today.replace(day=1)
     months = []
     for offset in range(MONTHLY_AMOUNT_MONTHS_AHEAD):

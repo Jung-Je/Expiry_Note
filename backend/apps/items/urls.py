@@ -9,7 +9,7 @@ from apps.items.views import (
 
 urlpatterns = [
     path("", ExpiryItemListCreateView.as_view(), name="item-list-create"),
-    # Must come before "<int:pk>/" so these aren't swallowed by the pk route.
+    # "<int:pk>/"보다 먼저 와야 pk 라우트에 걸리지 않는다.
     path("stats/", ExpiryItemStatsView.as_view(), name="item-stats"),
     path("calendar/", ExpiryItemCalendarView.as_view(), name="item-calendar"),
     path("<int:pk>/", ExpiryItemDetailView.as_view(), name="item-detail"),

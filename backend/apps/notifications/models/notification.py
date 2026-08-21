@@ -26,9 +26,9 @@ class Notification(models.Model):
     type = models.CharField(max_length=20, choices=Type.choices, default=Type.EXPIRY)
     title = models.CharField(max_length=100)
     message = models.CharField(max_length=255)
-    # item.expiry_date at the time this notification was generated. Kept
-    # separate from item.expiry_date so the item can be edited later without
-    # breaking the uniqueness check for "already notified about this date".
+    # 알림 생성 시점의 item.expiry_date. item.expiry_date와 별도로 저장해서,
+    # 나중에 항목이 수정되더라도 "이 날짜에 대해 이미 알림을 보냈는지"
+    # 판단하는 유일성 검사가 깨지지 않도록 한다.
     for_date = models.DateField()
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

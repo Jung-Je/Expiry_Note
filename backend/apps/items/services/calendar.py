@@ -1,4 +1,4 @@
-"""Monthly calendar view over a user's expiry items, for the 일정 screen."""
+"""일정 화면용 — 사용자의 만료 항목을 월 단위 달력 형태로 보여준다."""
 
 from datetime import date
 from itertools import groupby

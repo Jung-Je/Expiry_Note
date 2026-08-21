@@ -1,9 +1,9 @@
-"""Turns "an item's expiry is coming up" into an in-app Notification row.
+"""'항목의 만료가 다가온다'를 인앱 Notification row로 바꾼다.
 
-Meant to be run once a day (see the `generate_notifications` management
-command) — not triggered per-request. Idempotent: re-running it for the same
-day never creates duplicates, because Notification has a unique constraint
-on (item, for_date).
+하루에 한 번 실행되는 걸 전제로 한다 (`generate_notifications` 관리
+명령어 참고) — 요청마다 트리거되지 않는다. 멱등적이다: Notification이
+(item, for_date)에 유니크 제약이 있어서, 같은 날 다시 실행해도 중복
+생성되지 않는다.
 """
 
 from datetime import date
