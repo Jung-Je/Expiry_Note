@@ -29,7 +29,5 @@ class NotificationMarkReadView(APIView):
 
 class NotificationMarkAllReadView(APIView):
     def post(self, request):
-        updated = Notification.objects.filter(user=request.user, is_read=False).update(
-            is_read=True
-        )
+        updated = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
         return Response({"updated_count": updated}, status=status.HTTP_200_OK)

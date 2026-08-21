@@ -31,9 +31,7 @@ class ExpiryItem(models.Model):
         related_name="expiry_items",
     )
     title = models.CharField(max_length=100)
-    category = models.CharField(
-        max_length=20, choices=Category.choices, default=Category.OTHER
-    )
+    category = models.CharField(max_length=20, choices=Category.choices, default=Category.OTHER)
     expiry_date = models.DateField()
     # 구독/보험 등 정기 결제 금액(원). 결제가 없는 항목(보증서 등)은 비워둔다.
     amount = models.PositiveIntegerField(null=True, blank=True)
