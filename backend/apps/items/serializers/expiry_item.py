@@ -16,6 +16,7 @@ class ExpiryItemSerializer(serializers.ModelSerializer):
             "expiry_date",
             "amount",
             "memo",
+            "notify_days_before",
             "days_until_expiry",
             "status",
             "created_at",

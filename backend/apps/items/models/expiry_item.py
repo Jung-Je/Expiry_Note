@@ -38,6 +38,9 @@ class ExpiryItem(models.Model):
     # 구독/보험 등 정기 결제 금액(원). 결제가 없는 항목(보증서 등)은 비워둔다.
     amount = models.PositiveIntegerField(null=True, blank=True)
     memo = models.TextField(blank=True)
+    # 만료 며칠 전에 알림을 받을지. apps.notifications의 알림 생성 배치가
+    # expiry_date - notify_days_before == 오늘 인 항목을 찾아 알림을 만든다.
+    notify_days_before = models.PositiveSmallIntegerField(default=URGENT_WITHIN_DAYS)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
