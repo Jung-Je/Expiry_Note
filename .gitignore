@@ -9,6 +9,8 @@ staticfiles/
 media/
 .pytest_cache/
 .ruff_cache/
+.coverage
+htmlcov/
 
 # --- Env files ---
 # 어떤 형태의 env 파일도 커밋하지 않는다 — 실제 시크릿이 없는 로컬 개발용

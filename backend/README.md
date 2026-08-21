@@ -82,6 +82,24 @@ uv run ruff check .                        # 린트
 uv run ruff format .                       # 포맷팅
 ```
 
+## 커밋 전 체크
+
+저장소 루트의 `scripts/`에 커밋 전 코드 스타일을 맞추는 스크립트가 있습니다.
+
+```bash
+# 전체 체크 (백엔드 포맷팅 + 린트 + Django check + 프론트엔드 린트, 테스트는 제외 — 더 오래 걸려서 별도)
+scripts/check-all.sh
+
+# 개별 실행
+scripts/format.sh   # ruff format . — 파일을 직접 고침 (백엔드)
+scripts/lint.sh      # ruff check . — 문제만 보고, 고치지 않음 (백엔드)
+scripts/test.sh      # pytest --cov — 테스트 + 커버리지 (백엔드)
+```
+
+`scripts/check-all.sh` 한 줄이면 백엔드/프론트엔드 둘 다 검증됩니다 — 4단계로 포맷팅(백엔드), 린트(백엔드), Django check, 린트(프론트엔드)를 순서대로 돌립니다. `format.sh`를 그대로 호출하므로 포맷팅을 검사만 하는 게 아니라 **직접 고칩니다**.
+
+CI(`.github/workflows/ci.yml`)는 같은 체크(포맷팅/린트/Django check/테스트+커버리지, 프론트엔드 린트+테스트)를 push/PR마다 자동으로 실행하지만, 포맷팅 단계는 파일을 고치지 않고 `ruff format --check`로 실패만 시킵니다 — CI 러너에서 고친 내용은 어차피 저장되지 않고 사라지므로, 커밋 전에 포맷이 안 맞았다는 걸 놓치지 않기 위함입니다.
+
 ## 프로젝트 구조
 
 ```

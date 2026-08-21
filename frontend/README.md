@@ -49,8 +49,11 @@ Vite + React + TypeScript 기반 SPA입니다. 백엔드(Django + DRF)와는 완
 npm run dev       # 개발 서버 (HMR)
 npm run build     # 타입 체크 + 프로덕션 빌드 (.envs/.env.prod 사용 — 없으면 VITE_API_BASE_URL을 담아 직접 생성)
 npm run lint      # oxlint
+npm run test      # vitest
 npm run preview   # 빌드 결과 미리보기
 ```
+
+저장소 루트의 `scripts/check-all.sh`가 백엔드 체크에 이어 프론트엔드 린트(`npm run lint`)까지 한 번에 돌려줍니다. `npm run test`는 더 오래 걸려서 `check-all.sh`에는 포함되지 않으니 `frontend/`에서 직접 실행하세요. 같은 체크는 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)을 통해 push/PR마다 자동으로도 실행됩니다.
 
 ## 프로젝트 구조
 
