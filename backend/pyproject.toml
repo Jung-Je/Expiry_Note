@@ -34,3 +34,6 @@ select = ["E", "F", "I", "UP"]
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
+# apps/_template is a copy-only scaffold, never registered in INSTALLED_APPS —
+# its example test isn't runnable as-is, so keep it out of collection.
+norecursedirs = [".venv", "apps/_template"]

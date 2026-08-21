@@ -70,10 +70,17 @@ uv run ruff format .                       # 포맷팅
 backend/
 ├── config/          # Django 프로젝트 설정 (settings, urls, wsgi/asgi)
 ├── apps/            # 도메인별 Django 앱 모음
-│   └── core/        # 헬스 체크 등 공통 기능
+│   ├── _template/    # 새 앱을 만들 때 복사해서 시작하는 템플릿
+│   └── core/         # 헬스 체크 등 공통 기능
 ├── manage.py
 ├── pyproject.toml   # uv/ruff/pytest 설정
 └── .env.example
 ```
 
 새 도메인 앱은 `apps/` 아래에 추가합니다. 예: `apps/accounts`, `apps/items`, `apps/schedules`, `apps/notifications`.
+
+### 앱 구조 컨벤션
+
+각 앱의 `models`, `serializers`, `services`, `views`는 단일 파일이 아니라 폴더로 관리하고, 폴더 안에서도 기능 단위로 파일을 나눕니다. 하나의 파일에 서로 관련 없는 코드가 계속 쌓이는 것을 방지하기 위함입니다.
+
+새 앱을 추가할 때는 [`apps/_template`](apps/_template/README.md)을 복사해서 시작하세요. 폴더 구조, 각 레이어의 역할 구분, `__init__.py` re-export 규칙이 예시 코드와 함께 정리되어 있습니다.
