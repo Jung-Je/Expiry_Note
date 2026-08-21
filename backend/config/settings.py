@@ -8,6 +8,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -20,6 +21,10 @@ env = environ.Env(
 )
 # .env is optional (e.g. in CI/production, real env vars are used instead).
 environ.Env.read_env(BASE_DIR / ".env")
+
+# Base URL of the web frontend (no trailing slash) — used to build links
+# inside emails (email verification, password reset).
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
 
 
 # Quick-start development settings - unsuitable for production
@@ -45,12 +50,16 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third-party
     "rest_framework",
+    "rest_framework_simplejwt",
+    "corsheaders",
     # Local
     "apps.core",
+    "apps.accounts",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -58,6 +67,9 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+# 이메일을 로그인 아이디로 쓰는 커스텀 유저 모델. (apps/accounts/models/user.py)
+AUTH_USER_MODEL = "accounts.User"
 
 ROOT_URLCONF = "config.urls"
 
@@ -139,7 +151,42 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # https://www.django-rest-framework.org/api-guide/settings/
 
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
 }
+
+
+# Simple JWT
+# https://django-rest-framework-simplejwt.readthedocs.io/en/latest/settings.html
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=14),
+    "ROTATE_REFRESH_TOKENS": True,
+}
+
+
+# CORS
+# https://github.com/adamchainz/django-cors-headers
+# The web frontend (Vite dev server) runs on a different origin.
+
+CORS_ALLOWED_ORIGINS = env.list(
+    "CORS_ALLOWED_ORIGINS",
+    default=["http://localhost:5173"],
+)
+
+
+# Email
+# https://docs.djangoproject.com/en/5.1/topics/email/
+# Defaults to printing emails to the console in local dev. Real SMTP/이메일
+# 서비스 연동은 추후 확정.
+
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@expirynote.local")

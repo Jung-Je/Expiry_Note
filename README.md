@@ -177,7 +177,8 @@ MVP에서는 우선순위에서 제외하며, 출시 이후 다음 기능과 함
 
 ### 웹 프론트엔드
 
-- 추후 확정
+- Vite, React, TypeScript
+- Tailwind CSS, React Router, TanStack Query, React Hook Form + Zod, Recharts
 
 ### 모바일 앱
 
@@ -190,7 +191,7 @@ MVP에서는 우선순위에서 제외하며, 출시 이후 다음 기능과 함
 ```
 Expiry_Note/
 ├── backend/     # Django + DRF API 서버 (uv 관리)
-├── frontend/    # 웹 프론트엔드 (스택 미정)
+├── frontend/    # 웹 프론트엔드 (Vite + React, DRF API 연동)
 ├── mobile/      # 모바일 앱 (스택 미정)
 ├── docs/        # 기능 명세서, API 명세서 등 프로젝트 문서
 └── docker-compose.yml  # 로컬 개발용 PostgreSQL

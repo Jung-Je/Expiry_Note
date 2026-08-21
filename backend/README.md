@@ -48,7 +48,7 @@ Django + Django REST Framework 기반 API 서버입니다. 패키지/가상환�
 6. 헬스 체크로 정상 동작을 확인합니다.
 
    ```bash
-   curl http://127.0.0.1:8000/api/health/
+   curl http://127.0.0.1:8000/api/v1/health/
    # {"status": "ok"}
    ```
 
@@ -71,13 +71,33 @@ backend/
 ├── config/          # Django 프로젝트 설정 (settings, urls, wsgi/asgi)
 ├── apps/            # 도메인별 Django 앱 모음
 │   ├── _template/    # 새 앱을 만들 때 복사해서 시작하는 템플릿
-│   └── core/         # 헬스 체크 등 공통 기능
+│   ├── core/         # 헬스 체크 등 공통 기능
+│   └── accounts/     # 회원 인증 (이메일 가입/로그인, 카카오 로그인 등)
 ├── manage.py
 ├── pyproject.toml   # uv/ruff/pytest 설정
 └── .env.example
 ```
 
-새 도메인 앱은 `apps/` 아래에 추가합니다. 예: `apps/accounts`, `apps/items`, `apps/schedules`, `apps/notifications`.
+새 도메인 앱은 `apps/` 아래에 추가합니다. 예: `apps/items`, `apps/schedules`, `apps/notifications`.
+
+## API — 회원 인증 (`apps/accounts`)
+
+모든 경로는 `/api/v1/auth/` 아래에 있습니다. 인증이 필요 없는 요청은 `AllowAny`, 나머지는 JWT(`Authorization: Bearer <access>`)가 필요합니다.
+
+| Method | Path | 설명 |
+| --- | --- | --- |
+| POST | `signup/` | 이메일 회원가입. 가입 직후 인증 메일 발송(자동 로그인 안 됨) |
+| POST | `login/` | 이메일 로그인 → `{ access, refresh, user }` |
+| POST | `token/refresh/` | refresh token으로 access token 재발급 |
+| POST | `email/verify/` | 이메일 인증 링크의 `uid`/`token`으로 인증 완료 처리 |
+| POST | `password/reset/` | 비밀번호 재설정 메일 발송 (가입 여부와 무관하게 항상 200) |
+| POST | `password/reset/confirm/` | `uid`/`token`/`new_password`로 비밀번호 변경 |
+| POST | `kakao/login/` | 프론트가 카카오 JS SDK로 받은 `access_token`으로 로그인/가입 |
+| GET | `me/` | 현재 로그인한 사용자 정보 (인증 필요) |
+
+- 로그인 아이디는 이메일입니다 (`AUTH_USER_MODEL = "accounts.User"`, `apps/accounts/models/user.py`).
+- 이메일 발송은 `EMAIL_BACKEND`가 기본적으로 콘솔 백엔드라 실제로 나가지 않고 `runserver` 콘솔에 링크가 출력됩니다. 실제 SMTP/이메일 서비스 연동은 추후 확정.
+- 카카오 로그인은 백엔드가 OAuth 코드 교환을 하지 않습니다 — 프론트엔드가 카카오 JS SDK로 얻은 `access_token`을 그대로 넘기면, 백엔드가 그 토큰으로 카카오 사용자 정보 API를 호출해 검증합니다 (`apps/accounts/services/kakao.py`).
 
 ### 앱 구조 컨벤션
 
