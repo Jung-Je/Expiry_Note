@@ -1,4 +1,6 @@
-import { defineConfig } from 'vite'
+// `vitest/config`의 defineConfig는 Vite 설정 타입에 `test` 필드를 얹은
+// 것이라, 여기서 vitest 설정(test.environment 등)도 같이 타입 체크된다.
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
@@ -13,5 +15,8 @@ export default defineConfig({
   envDir: './.envs',
   server: {
     port: 5173,
+  },
+  test: {
+    environment: 'jsdom',
   },
 })
