@@ -1,0 +1,40 @@
+# --- Python / Django (backend/) ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+db.sqlite3
+staticfiles/
+media/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Env files ---
+# 어떤 형태의 env 파일도 커밋하지 않는다 — 실제 시크릿이 없는 로컬 개발용
+# 값이라도 저장소에 올리지 않는다. 필요한 키는 .env.example을 커밋하는
+# 대신 README.md에 문서화한다.
+.env
+.env.*
+# 아래 세 줄은 .env.* 패턴에 이미 포함되지만, backend/frontend 각각의
+# .envs/ 폴더(와 그 안의 파일)를 명시적으로도 무시하도록 남겨둔다.
+**/.envs/
+**/.envs/.env.dev
+**/.envs/.env.prod
+
+# --- Node / frontend (frontend/) ---
+node_modules/
+dist/
+build/
+.next/
+.expo/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+
+# --- uv ---
+uv.lock.bak
