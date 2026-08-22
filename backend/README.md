@@ -104,7 +104,9 @@ CI(`.github/workflows/ci.yml`)는 같은 체크(포맷팅/린트/Django check/�
 
 ```
 backend/
-├── config/          # Django 프로젝트 설정 (settings, urls, wsgi/asgi)
+├── config/          # Django 프로젝트 설정 (urls, wsgi/asgi)
+│   └── settings/     # base.py(공통) + dev.py/prod.py(환경별). DJANGO_ENV_FILE=
+│                      # .env.prod면 prod.py, 그 외엔 dev.py를 씀 (settings/__init__.py)
 ├── apps/            # 도메인별 Django 앱 모음
 │   ├── _template/    # 새 앱을 만들 때 복사해서 시작하는 템플릿
 │   ├── core/         # 헬스 체크 등 공통 기능

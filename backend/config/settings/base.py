@@ -1,5 +1,5 @@
 """
-Django settings for config project.
+Django settings for config project — dev/prod이 공통으로 상속하는 base.
 
 For more information on this file, see
 https://docs.djangoproject.com/en/5.1/topics/settings/
@@ -15,7 +15,9 @@ from pathlib import Path
 import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+# base.py는 config/settings/ 아래에 있으므로 backend/까지 3단계 올라간다
+# (config/settings.py 하나였을 때는 2단계였음 — 패키지로 쪼개면서 바뀐 부분).
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env(
     DEBUG=(bool, False),
