@@ -1,21 +1,20 @@
 # 진행 상황
 
-마지막 업데이트: 2026-08-21 · 브랜치: `feature/initial-setup`
+마지막 업데이트: 2026-08-22 · 브랜치: `feature/initial-setup`
 
 이 문서는 지금까지 뭘 했고, 뭐가 남았고, 다음에 어디서부터 이어가면 되는지 정리한 작업 로그입니다. 기능/화면 기획은 루트 [`README.md`](../README.md)를 참고하세요.
 
 ## 지금 커밋 안 된 변경사항부터 처리하세요
 
-`git status`에 스테이징된 채로 남아있는 작업이 있습니다 — CI/스크립트 정리 건입니다:
+`config/settings.py`를 `config/settings/{base,dev,prod}.py` 패키지로 쪼갠 작업이 아직 커밋 전입니다:
 
-- `scripts/` (`check-all.sh`, `format.sh`, `lint.sh`, `test.sh`)
-- `.github/workflows/ci.yml`
-- `backend/pyproject.toml`, `backend/uv.lock` (pytest-cov 추가)
-- `ruff format .`을 처음 실제로 돌려서 생긴 기존 파일 포맷 변경 (따옴표 스타일 등, 동작 변화 없음)
-- `frontend/`에 vitest + jsdom 추가, `tokenStorage.test.ts`
-- `backend/README.md`, `frontend/README.md` 문서 갱신
+- `backend/config/settings/base.py` — 기존 `settings.py` 내용 그대로 (`BASE_DIR` 계산만 한 단계 더 깊어진 경로에 맞게 수정)
+- `backend/config/settings/dev.py` — `from .base import *`만 있음
+- `backend/config/settings/prod.py` — base + `DEBUG = False` 명시 + 배포 전 켜야 할 HTTPS 하드닝 설정 TODO 코멘트
+- `backend/config/settings/__init__.py` — 기존 `DJANGO_ENV_FILE` 환경변수로 dev/prod 선택 (`.env.prod`면 prod, 그 외엔 dev). `manage.py`/`wsgi.py`/`asgi.py`/pytest는 전부 그대로 `DJANGO_SETTINGS_MODULE=config.settings`만 가리키면 됨 — 다른 파일 변경 없음
+- `backend/README.md` — 프로젝트 구조 설명 갱신
 
-작업을 이어가기 전에 `git status`, `git diff`로 검토하고 커밋부터 하세요. 확인 명령어:
+dev/prod 둘 다 `manage.py check` 통과, 테스트 60개·`check-all.sh`·`ruff format --check` 확인 완료. 커밋만 하면 됩니다.
 
 ```bash
 bash scripts/check-all.sh   # 백엔드 포맷팅+린트+Django check, 프론트 린트까지 한 번에
@@ -30,8 +29,9 @@ cd frontend && npm run test # 프론트 테스트
 - 모노레포: `backend/`(Django+DRF, uv), `frontend/`(Vite+React+TS), `mobile/`(스택 미정), `docs/`
 - Django 앱은 `apps/<name>/{models,serializers,services,views,tests}/` 폴더 구조 컨벤션 사용. 새 앱은 `backend/apps/_template/`을 복사해서 시작 (자세한 규칙은 그 안의 README).
 - 환경변수: `backend/.envs/`, `frontend/.envs/`에 `.env.dev`/`.env.prod`를 로컬에서 직접 만들어 사용. **어떤 env 파일도 git에 커밋하지 않음** — 필요한 키는 `backend/README.md`/`frontend/README.md`에 문서화되어 있고, 각자 로컬에 파일을 새로 만들어야 함.
-- DB: docker-compose 컨테이너 방식을 걷어내고, 로컬에 직접 설치한 PostgreSQL(pgAdmin4로 관리)에 `expiry_note_dev`/`expiry_note_prod` 두 데이터베이스로 연결. `backend/config/settings.py`는 `DB_ENGINE`/`DB_NAME`/`DB_USER`/`DB_PASSWORD`/`DB_HOST`/`DB_PORT`/`DB_CONN_MAX_AGE` 분리형 env var를 읽음 (`DATABASE_URL` 한 줄 방식 아님).
-- 코드 스타일/CI: `scripts/check-all.sh` 한 줄로 백엔드(ruff format+lint+`manage.py check`)와 프론트엔드(oxlint) 전체 검증. `.github/workflows/ci.yml`이 push/PR마다 백엔드(Postgres 서비스 컨테이너 + format check + lint + Django check + pytest 커버리지)와 프론트엔드(lint + vitest) job을 병렬로 실행.
+- DB: docker-compose 컨테이너 방식을 걷어내고, 로컬에 직접 설치한 PostgreSQL(pgAdmin4로 관리)에 `expiry_note_dev`/`expiry_note_prod` 두 데이터베이스로 연결. 설정은 `DB_ENGINE`/`DB_NAME`/`DB_USER`/`DB_PASSWORD`/`DB_HOST`/`DB_PORT`/`DB_CONN_MAX_AGE` 분리형 env var를 읽음 (`DATABASE_URL` 한 줄 방식 아님).
+- 백엔드 settings: `config/settings.py` 하나였던 걸 `config/settings/{base,dev,prod}.py`로 분리 (커밋 대기 중 — 위 섹션 참고). `DJANGO_ENV_FILE` 환경변수 하나로 `.envs/` 파일과 settings 모듈을 함께 선택.
+- 코드 스타일/CI: `scripts/check-all.sh` 한 줄로 백엔드(ruff format+lint+`manage.py check`)와 프론트엔드(oxlint) 전체 검증. `.github/workflows/ci.yml`이 push/PR마다 백엔드(Postgres 서비스 컨테이너 + format check + lint + Django check + pytest 커버리지)와 프론트엔드(lint + vitest) job을 병렬로 실행 — GitHub Actions에서 실제로 그린으로 통과하는 것까지 확인함(처음엔 `push: branches: [main]`으로 걸어놔서 feature 브랜치 push에 안 걸리던 버그가 있었고, 수정 후 재확인함).
 
 ### 백엔드 API — MVP 기능 전 영역 구현 완료
 
