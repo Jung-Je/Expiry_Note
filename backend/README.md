@@ -24,6 +24,11 @@ Django + Django REST Framework 기반 API 서버입니다. 패키지/가상환�
    DJANGO_DEBUG=True
    DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
 
+   # JWT 서명 전용 키(선택). 없으면 DJANGO_SECRET_KEY를 그대로 쓴다. 배포
+   # 환경에서는 세션/CSRF 서명(DJANGO_SECRET_KEY)과 분리하기 위해 별도의
+   # 랜덤 값을 설정하는 걸 권장한다.
+   # JWT_SIGNING_KEY=change-me-to-a-different-random-secret-key
+
    # 로컬 PostgreSQL(pgAdmin4로 관리)의 expiry_note_dev 데이터베이스.
    DB_ENGINE=django.db.backends.postgresql
    DB_NAME=expiry_note_dev
@@ -132,12 +137,17 @@ backend/
 | POST | `email/verify/` | 이메일 인증 링크의 `uid`/`token`으로 인증 완료 처리 |
 | POST | `password/reset/` | 비밀번호 재설정 메일 발송 (가입 여부와 무관하게 항상 200) |
 | POST | `password/reset/confirm/` | `uid`/`token`/`new_password`로 비밀번호 변경 |
+| POST | `password/change/` | 로그인 상태에서 `current_password`/`new_password`로 비밀번호 변경 (인증 필요) |
+| POST | `logout/` | `refresh` token 블랙리스트 처리 (인증 필요) |
 | POST | `kakao/login/` | 프론트가 카카오 JS SDK로 받은 `access_token`으로 로그인/가입 |
-| GET | `me/` | 현재 로그인한 사용자 정보 (인증 필요) |
+| GET/PATCH | `me/` | 현재 로그인한 사용자 정보 조회/수정 (인증 필요) |
+| DELETE | `me/` | 회원 탈퇴 — 연관 항목/알림 cascade 삭제, 발급된 refresh token 전부 블랙리스트 (인증 필요) |
 
 - 로그인 아이디는 이메일입니다 (`AUTH_USER_MODEL = "accounts.User"`, `apps/accounts/models/user.py`).
 - 이메일 발송은 `EMAIL_BACKEND`가 기본적으로 콘솔 백엔드라 실제로 나가지 않고 `runserver` 콘솔에 링크가 출력됩니다. 실제 SMTP/이메일 서비스 연동은 추후 확정.
 - 카카오 로그인은 백엔드가 OAuth 코드 교환을 하지 않습니다 — 프론트엔드가 카카오 JS SDK로 얻은 `access_token`을 그대로 넘기면, 백엔드가 그 토큰으로 카카오 사용자 정보 API를 호출해 검증합니다 (`apps/accounts/services/kakao.py`).
+- **토큰 관리**: access 30분/refresh 14일, 재발급마다 refresh를 로테이션하고 옛 토큰은 블랙리스트 처리(`SIMPLE_JWT`). 비밀번호 변경/재설정/회원탈퇴 시점엔 그 유저의 발급된 refresh token을 전부 블랙리스트 처리해 기존 세션을 강제 종료합니다(`apps/accounts/services/token_revocation.py`).
+- **Rate limiting**: 위 표의 `signup/`·`login/`·`email/verify/`·`password/reset/`·`password/reset/confirm/`·`password/change/`·`kakao/login/`은 IP 기준으로 스로틀됩니다(`ScopedRateThrottle`, rate는 `config/settings/base.py`의 `REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]`).
 
 ### 앱 구조 컨벤션
 
