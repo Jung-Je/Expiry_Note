@@ -173,6 +173,22 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    # ScopedRateThrottle은 뷰에 throttle_scope가 없으면 아무것도 하지 않으므로
+    # 전역으로 켜둬도 안전하다 — 실제로는 아래 스코프가 지정된 인증 관련 뷰
+    # (로그인, 회원가입, 비밀번호 재설정, 카카오 로그인 등)만 제한된다.
+    # 브루트포스/이메일 enumeration/스팸성 가입을 IP 기준으로 막기 위함.
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "auth-login": "10/min",
+        "auth-signup": "20/hour",
+        "auth-kakao-login": "10/min",
+        "auth-password-reset-request": "5/hour",
+        "auth-password-reset-confirm": "10/hour",
+        "auth-email-verify": "10/hour",
+        "auth-password-change": "20/hour",
+    },
 }
 
 
@@ -184,6 +200,11 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=14),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
+    # SECRET_KEY(세션/CSRF 서명에도 쓰임)와 분리된 별도 키로 JWT를 서명한다.
+    # JWT_SIGNING_KEY가 없으면 지금까지처럼 SECRET_KEY를 그대로 쓴다 — 로컬
+    # .envs/.env.dev를 새로 만들 필요는 없고, 배포 시에는 별도 값을 주는 걸
+    # 권장한다(둘 중 하나가 새도 다른 하나까지 위험해지지 않도록).
+    "SIGNING_KEY": env("JWT_SIGNING_KEY", default=SECRET_KEY),
 }
 
 
