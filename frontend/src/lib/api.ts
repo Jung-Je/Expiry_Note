@@ -41,7 +41,11 @@ api.interceptors.response.use(
       refreshPromise ??= axios
         .post(`${baseURL}/auth/token/refresh/`, { refresh })
         .then((res) => {
-          setTokens({ access: res.data.access, refresh })
+          // 백엔드가 ROTATE_REFRESH_TOKENS=True라 요청 때 쓴 refresh는 응답과
+          // 동시에 블랙리스트되고, 새 refresh가 응답에 함께 내려온다. 옛
+          // refresh를 그대로 재저장하면 다음 재발급 시도가 블랙리스트된
+          // 토큰으로 실패해 강제 로그아웃된다 — 반드시 응답의 새 값을 써야 한다.
+          setTokens({ access: res.data.access, refresh: res.data.refresh })
           return res.data.access as string
         })
         .finally(() => {
