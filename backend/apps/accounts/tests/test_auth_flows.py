@@ -4,16 +4,20 @@ import pytest
 from django.core import mail
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.accounts.models import User
 from apps.accounts.services import (
     InvalidKakaoToken,
     InvalidVerificationToken,
+    change_password,
     confirm_password_reset,
     get_or_create_kakao_user,
     request_password_reset,
     signup,
     verify_email,
+    withdraw,
 )
 from apps.accounts.services.tokens import email_verification_token_generator
 
@@ -73,6 +77,53 @@ def test_password_reset_round_trip():
 def test_password_reset_request_is_silent_for_unknown_email():
     request_password_reset(email="nobody@example.com")
     assert len(mail.outbox) == 0
+
+
+@pytest.mark.django_db
+def test_password_reset_confirm_revokes_existing_refresh_tokens():
+    user = User.objects.create_user(
+        email="revoke-reset@example.com", password="old-pass-1", name="테스트"
+    )
+    RefreshToken.for_user(user)
+    RefreshToken.for_user(user)
+    assert OutstandingToken.objects.filter(user=user).count() == 2
+    assert BlacklistedToken.objects.filter(token__user=user).count() == 0
+
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    mail.outbox = []
+    request_password_reset(email=user.email)
+    token = mail.outbox[0].body.split("token=")[1].strip()
+
+    confirm_password_reset(uid=uid, token=token, new_password="new-strong-pass-1")
+
+    assert BlacklistedToken.objects.filter(token__user=user).count() == 2
+
+
+@pytest.mark.django_db
+def test_change_password_revokes_existing_refresh_tokens():
+    user = User.objects.create_user(
+        email="revoke-change@example.com", password="old-pass-1", name="테스트"
+    )
+    RefreshToken.for_user(user)
+    assert BlacklistedToken.objects.filter(token__user=user).count() == 0
+
+    change_password(user, current_password="old-pass-1", new_password="new-strong-pass-1")
+
+    assert BlacklistedToken.objects.filter(token__user=user).count() == 1
+
+
+@pytest.mark.django_db
+def test_withdraw_revokes_existing_refresh_tokens_before_deleting_user():
+    user = User.objects.create_user(
+        email="revoke-withdraw@example.com", password="old-pass-1", name="테스트"
+    )
+    RefreshToken.for_user(user)
+    outstanding_id = OutstandingToken.objects.get(user=user).id
+
+    withdraw(user)
+
+    assert not User.objects.filter(email="revoke-withdraw@example.com").exists()
+    assert BlacklistedToken.objects.filter(token_id=outstanding_id).exists()
 
 
 @pytest.mark.django_db
