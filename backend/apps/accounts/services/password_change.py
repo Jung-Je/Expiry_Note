@@ -1,4 +1,5 @@
 from apps.accounts.models import User
+from apps.accounts.services.token_revocation import revoke_all_tokens
 
 
 class InvalidCurrentPassword(Exception):
@@ -15,3 +16,7 @@ def change_password(user: User, *, current_password: str, new_password: str) -> 
         raise InvalidCurrentPassword
     user.set_password(new_password)
     user.save(update_fields=["password"])
+    # 비밀번호가 바뀌면 그 전에 발급된 refresh token(다른 기기 포함)을 전부
+    # 무효화한다 — 계정이 탈취된 상황에서 비밀번호 변경이 실제로 로그아웃
+    # 효과를 내도록 한다.
+    revoke_all_tokens(user)
