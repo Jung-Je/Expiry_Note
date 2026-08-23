@@ -35,6 +35,7 @@ from apps.accounts.services import (
 
 class SignupView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth-signup"
 
     def post(self, request):
         serializer = SignupSerializer(data=request.data)
@@ -50,6 +51,7 @@ class SignupView(APIView):
 class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
     serializer_class = EmailTokenObtainPairSerializer
+    throttle_scope = "auth-login"
 
 
 class MeView(APIView):
@@ -71,6 +73,7 @@ class MeView(APIView):
 
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_scope = "auth-password-change"
 
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
@@ -101,6 +104,7 @@ class LogoutView(APIView):
 
 class EmailVerificationConfirmView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth-email-verify"
 
     def post(self, request):
         serializer = EmailVerificationConfirmSerializer(data=request.data)
@@ -117,6 +121,7 @@ class EmailVerificationConfirmView(APIView):
 
 class PasswordResetRequestView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth-password-reset-request"
 
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
@@ -128,6 +133,7 @@ class PasswordResetRequestView(APIView):
 
 class PasswordResetConfirmView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth-password-reset-confirm"
 
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
@@ -148,6 +154,7 @@ class PasswordResetConfirmView(APIView):
 
 class KakaoLoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth-kakao-login"
 
     def post(self, request):
         serializer = KakaoLoginSerializer(data=request.data)
