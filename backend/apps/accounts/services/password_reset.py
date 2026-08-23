@@ -4,6 +4,7 @@ from django.utils.http import urlsafe_base64_decode
 
 from apps.accounts.models import User
 from apps.accounts.services.email import send_password_reset_email
+from apps.accounts.services.token_revocation import revoke_all_tokens
 
 
 class InvalidResetToken(Exception):
@@ -32,4 +33,7 @@ def confirm_password_reset(*, uid: str, token: str, new_password: str) -> User:
 
     user.set_password(new_password)
     user.save(update_fields=["password"])
+    # 로그인 상태 비밀번호 변경(services/password_change.py)과 동일하게,
+    # 재설정 전에 발급된 refresh token을 전부 무효화한다.
+    revoke_all_tokens(user)
     return user
