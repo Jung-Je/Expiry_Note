@@ -89,3 +89,22 @@ export async function getItemStats(): Promise<ItemStats> {
   const { data } = await api.get<ItemStats>('/items/stats/')
   return data
 }
+
+export interface CalendarDay {
+  date: string
+  items: ExpiryItem[]
+}
+
+export interface MonthlyCalendar {
+  year: number
+  month: number
+  days: CalendarDay[]
+}
+
+export async function getMonthlyCalendar(params: {
+  year: number
+  month: number
+}): Promise<MonthlyCalendar> {
+  const { data } = await api.get<MonthlyCalendar>('/items/calendar/', { params })
+  return data
+}
