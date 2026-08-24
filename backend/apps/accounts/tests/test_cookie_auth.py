@@ -65,6 +65,24 @@ def test_token_refresh_without_cookie_or_body_is_rejected():
 
 
 @pytest.mark.django_db
+def test_token_refresh_for_deleted_user_returns_401_not_500(user):
+    # 서명은 유효한 refresh token인데 그 유저가 이미 탈퇴한 경우 — 브라우저에
+    # 남아있는 쿠키로 재발급을 시도하면(예: AuthProvider의 마운트 시 조용한
+    # 재로그인) simplejwt가 User.DoesNotExist를 그대로 던져 500이 나던 버그.
+    client = APIClient()
+    login_response = client.post(
+        "/api/v1/auth/login/", {"email": user.email, "password": "right-strong-pass-1"}
+    )
+    refresh_value = login_response.cookies[settings.JWT_REFRESH_COOKIE_NAME].value
+
+    user.delete()
+
+    response = APIClient().post("/api/v1/auth/token/refresh/", {"refresh": refresh_value})
+
+    assert response.status_code == 401
+
+
+@pytest.mark.django_db
 def test_token_refresh_body_value_takes_priority_over_cookie(user):
     # 쿠키 없이 바디로 직접 refresh를 보내는 하위호환 경로(테스트, 서버-투-서버)도
     # 계속 동작해야 한다.
