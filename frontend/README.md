@@ -93,5 +93,8 @@ src/
 ## 인증 방식
 
 - 백엔드가 발급하는 JWT(access/refresh)를 사용합니다.
-- MVP 단순화를 위해 두 토큰 모두 `localStorage`에 저장합니다 (`features/auth/tokenStorage.ts`). XSS에 노출되면 탈취될 수 있으므로, 정식 출시 전에는 httpOnly 쿠키 기반으로 전환하는 것을 검토하세요.
-- access token 만료(401) 시 `lib/api.ts`의 axios 인터셉터가 refresh token으로 자동 재발급 후 원래 요청을 재시도합니다.
+- **access token**은 메모리에만 보관합니다 (`features/auth/tokenStorage.ts`의 모듈 변수 — React state가 아니라 axios 인터셉터에서도 동기적으로 읽을 수 있게 일부러 평범한 변수로 둠). 새로고침하면 사라지므로, `AuthProvider` 마운트 시 refresh 쿠키로 조용히 재발급받아 채웁니다.
+- **refresh token**은 JS가 아예 접근할 수 없는 httpOnly 쿠키로만 오갑니다 — 로그인/재발급/카카오 로그인 응답이 `Set-Cookie`로 심어주고, 프론트는 값을 직접 다루지 않습니다. 두 토큰을 전부 `localStorage`에 저장하던 이전 방식은 XSS 한 번으로 refresh token(수명이 훨씬 긺)까지 같이 탈취될 수 있었습니다.
+- 쿠키가 오가려면 axios 인스턴스에 `withCredentials: true`가 필요합니다 (`lib/api.ts`) — 백엔드도 `CORS_ALLOW_CREDENTIALS=True`로 맞춰져 있습니다.
+- access token 만료(401) 시 `lib/api.ts`의 axios 인터셉터가 `refreshAccessToken()`으로 자동 재발급 후 원래 요청을 재시도합니다. 이 함수는 `AuthProvider`의 초기 로드 시에도 재사용됩니다.
+- 로그아웃(`features/auth/api.ts`의 `logout()`)은 백엔드 `/auth/logout/`을 호출해 refresh token을 블랙리스트 처리하고 쿠키를 지웁니다 — 클라이언트 쪽에서 httpOnly 쿠키를 직접 지울 방법이 없으므로 반드시 서버 응답을 거쳐야 합니다.
