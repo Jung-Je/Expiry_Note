@@ -24,11 +24,13 @@ from apps.accounts.serializers import (
 )
 from apps.accounts.services import (
     InvalidCurrentPassword,
+    InvalidKakaoCode,
     InvalidKakaoToken,
     InvalidResetToken,
     InvalidVerificationToken,
     change_password,
     confirm_password_reset,
+    exchange_kakao_code,
     get_or_create_kakao_user,
     request_password_reset,
     signup,
@@ -197,10 +199,14 @@ class KakaoLoginView(APIView):
         serializer = KakaoLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            user = get_or_create_kakao_user(serializer.validated_data["access_token"])
-        except InvalidKakaoToken:
+            access_token = exchange_kakao_code(
+                code=serializer.validated_data["code"],
+                redirect_uri=serializer.validated_data["redirect_uri"],
+            )
+            user = get_or_create_kakao_user(access_token)
+        except (InvalidKakaoCode, InvalidKakaoToken):
             return Response(
-                {"detail": "유효하지 않은 카카오 액세스 토큰입니다."},
+                {"detail": "카카오 로그인에 실패했습니다. 다시 시도해주세요."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         refresh = RefreshToken.for_user(user)
