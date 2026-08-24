@@ -68,6 +68,17 @@ Django + Django REST Framework 기반 API 서버입니다. 패키지/가상환�
    # Prints emails to the runserver console instead of actually sending them.
    EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
    DEFAULT_FROM_EMAIL=no-reply@expirynote.local
+
+   # 실제로 이메일을 발송하려면(회원가입 인증, 비밀번호 재설정) 위
+   # EMAIL_BACKEND를 아래 SMTP 백엔드로 바꾸고 이 네 줄을 채운다. 지금은
+   # Gmail SMTP를 쓴다 — Google 계정에서 2단계 인증을 켠 뒤 "앱 비밀번호"를
+   # 발급받아 EMAIL_HOST_PASSWORD에 넣는다(일반 로그인 비밀번호 아님).
+   # DEFAULT_FROM_EMAIL도 EMAIL_HOST_USER와 같은 Gmail 주소로 맞춰야 한다 —
+   # Gmail은 인증된 계정과 다른 주소로 보내는 걸 거부한다.
+   # EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+   # EMAIL_HOST_USER=<Gmail 주소>
+   # EMAIL_HOST_PASSWORD=<Gmail 앱 비밀번호, 16자리>
+   # DEFAULT_FROM_EMAIL=<위와 같은 Gmail 주소>
    ```
 
    실제 배포에 준하는 설정으로 로컬에서 테스트하려면 `DB_NAME`을 `expiry_note_prod`로 바꾼 `.envs/.env.prod`를 만들고 `DJANGO_ENV_FILE=.env.prod uv run python manage.py runserver`처럼 실행하세요. 실제 배포 환경에서는 이 파일 대신 진짜 환경 변수를 직접 주입합니다.
@@ -194,7 +205,7 @@ backend/
 | DELETE | `me/` | 회원 탈퇴 — 연관 항목/알림 cascade 삭제, 발급된 refresh token 전부 블랙리스트 (인증 필요) |
 
 - 로그인 아이디는 이메일입니다 (`AUTH_USER_MODEL = "accounts.User"`, `apps/accounts/models/user.py`).
-- 이메일 발송은 `EMAIL_BACKEND`가 기본적으로 콘솔 백엔드라 실제로 나가지 않고 `runserver` 콘솔에 링크가 출력됩니다. 실제 SMTP/이메일 서비스 연동은 추후 확정.
+- 이메일 발송은 `EMAIL_BACKEND`가 기본적으로 콘솔 백엔드라 실제로 나가지 않고 `runserver` 콘솔에 링크가 출력됩니다. 실제 발송은 Gmail SMTP를 씁니다 — 위 "로컬 개발 환경 설정"의 `EMAIL_HOST_USER`/`EMAIL_HOST_PASSWORD` 참고.
 - 카카오 로그인은 프론트엔드가 카카오 JS SDK(`Kakao.Auth.authorize()`)로 인가 코드(`code`)만 받아서 넘기고, 그 코드를 `access_token`으로 교환하는 건 반드시 백엔드가 합니다(`exchange_kakao_code`, `apps/accounts/services/kakao.py`) — client_secret처럼 프론트로 넘기면 안 되는 값이 필요할 수 있어서입니다. 교환한 `access_token`으로 카카오 사용자 정보 API를 호출해 검증한 뒤 로컬 사용자와 매칭/생성합니다. `redirect_uri`는 프론트가 `authorize()` 호출 때 쓴 값과 정확히 같아야 합니다(카카오 쪽 검증 대상).
 - **토큰 관리**: access 30분/refresh 14일, 재발급마다 refresh를 로테이션하고 옛 토큰은 블랙리스트 처리(`SIMPLE_JWT`). 비밀번호 변경/재설정/회원탈퇴 시점엔 그 유저의 발급된 refresh token을 전부 블랙리스트 처리해 기존 세션을 강제 종료합니다(`apps/accounts/services/token_revocation.py`).
 - **refresh token은 httpOnly 쿠키로만 오갑니다** — `login/`·`token/refresh/`·`kakao/login/` 응답 바디에는 access token과 user 정보만 들어있고, refresh token은 JS가 접근할 수 없는 httpOnly 쿠키(`Set-Cookie`, `/api/v1/auth/` 경로로 범위 제한)로만 내려갑니다. 재발급도 그 쿠키를 읽어서 하므로 프론트가 body로 refresh를 보낼 필요가 없습니다 — 브라우저가 쿠키를 자동으로 실어 보냅니다(`apps/accounts/cookies.py`). 크로스오리진(로컬 dev 기준 5173→8000)으로 쿠키를 주고받아야 해서 `CORS_ALLOW_CREDENTIALS=True`이고, 프론트도 axios `withCredentials: true`가 필요합니다.
