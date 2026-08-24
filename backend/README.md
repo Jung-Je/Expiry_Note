@@ -95,10 +95,23 @@ uv run python manage.py migrate            # 마이그레이션 적용
 uv run python manage.py makemigrations     # 마이그레이션 생성
 uv run python manage.py createsuperuser    # 관리자 계정 생성
 uv run python manage.py runserver          # 개발 서버 실행
+uv run python manage.py runscheduler       # 알림 생성/토큰 정리 스케줄러 (아래 참고)
 uv run pytest                              # 테스트 실행
 uv run ruff check .                        # 린트
 uv run ruff format .                       # 포맷팅
 ```
+
+## 알림 생성/토큰 정리 스케줄러
+
+`generate_notifications`(만료 임박 알림 생성)와 `flushexpiredtokens`(만료된 JWT 블랙리스트 정리)는 원래 cron 같은 외부 스케줄러로 주기적으로 돌리는 걸 전제로 만든 관리 명령어입니다. 배포 플랫폼이 아직 정해지지 않아 시스템 cron에 의존하는 대신, `apps/core/management/commands/runscheduler.py`가 [APScheduler](https://apscheduler.readthedocs.io/)로 이 둘을 프로세스 안에서 직접 스케줄링합니다(`generate_notifications` 매일 09:00, `flushexpiredtokens` 매주 월요일 03:00, 둘 다 `TIME_ZONE` 기준).
+
+```bash
+uv run python manage.py runscheduler   # 웹 서버(runserver)와는 별개의 독립 프로세스로 계속 띄워둠
+```
+
+- **`runserver`(웹 프로세스)와 완전히 별개의 프로세스로 띄워야 합니다** — Docker Compose의 별도 서비스, systemd 유닛, Heroku/Render 같은 곳의 worker 프로세스, 그냥 서버에서 `nohup uv run python manage.py runscheduler &`로 띄워도 전부 동일하게 동작합니다. 배포 플랫폼이 뭐로 정해지든 그대로 씁니다.
+- 실제로 배포할 플랫폼이 자체 cron 기능(예: k8s CronJob, 클라우드 스케줄러)을 제공한다면, 이 워커를 안 띄우고 대신 `generate_notifications`/`flushexpiredtokens`를 그 기능으로 직접 스케줄링해도 됩니다 — 관리 명령어 자체는 그대로 재사용됩니다.
+- `generate_notifications`는 여러 번 실행해도 항목+만료일 조합으로 중복 알림이 생성되지 않습니다(`Notification`의 `unique_together`).
 
 ## 커밋 전 체크
 
@@ -127,8 +140,10 @@ backend/
 │                      # .env.prod면 prod.py, 그 외엔 dev.py를 씀 (settings/__init__.py)
 ├── apps/            # 도메인별 Django 앱 모음
 │   ├── _template/    # 새 앱을 만들 때 복사해서 시작하는 템플릿
-│   ├── core/         # 헬스 체크 등 공통 기능
-│   └── accounts/     # 회원 인증 (이메일 가입/로그인, 카카오 로그인 등)
+│   ├── core/         # 헬스 체크, 알림/토큰 정리 스케줄러(runscheduler)
+│   ├── accounts/     # 회원 인증 (이메일 가입/로그인, 카카오 로그인 등)
+│   ├── items/        # 만료 항목 관리 + 일정 + 통계
+│   └── notifications/ # 인앱 알림 + 알림 생성 배치
 ├── manage.py
 ├── pyproject.toml   # uv/ruff/pytest 설정
 └── .envs/           # git에 커밋되지 않음 — 필요한 키는 이 README에 문서화
