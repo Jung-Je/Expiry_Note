@@ -1,16 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { categoryLabel, STATUS_BADGE_STYLES, STATUS_LABELS } from '../features/items/constants'
+import { formatAmount, formatDday } from '../features/items/format'
 import { useDeleteItemMutation, useItemQuery } from '../features/items/hooks'
-
-function formatAmount(amount: number | null): string {
-  if (amount == null) return '-'
-  return `${amount.toLocaleString('ko-KR')}원`
-}
-
-function formatDday(daysUntilExpiry: number): string {
-  if (daysUntilExpiry === 0) return 'D-day'
-  return daysUntilExpiry > 0 ? `D-${daysUntilExpiry}` : `D+${Math.abs(daysUntilExpiry)}`
-}
 
 export function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
