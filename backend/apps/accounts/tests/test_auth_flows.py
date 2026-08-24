@@ -145,6 +145,8 @@ def test_kakao_login_creates_user_from_profile():
 
     assert user.kakao_id == "123456789"
     assert user.email == "kakao-user@example.com"
+    assert user.name == "카카오유저"
+    assert user.signup_source == User.SignupSource.KAKAO
     assert user.has_usable_password() is False
 
     # 같은 카카오 계정으로 다시 로그인하면 새 유저를 만들지 않고 그대로 반환한다.
@@ -166,6 +168,70 @@ def test_kakao_login_rejects_invalid_token():
 
         with pytest.raises(InvalidKakaoToken):
             get_or_create_kakao_user("bad-token")
+
+
+@pytest.mark.django_db
+def test_kakao_login_falls_back_to_properties_nickname():
+    # kakao_account.profile.nickname은 "카카오계정(닉네임)" 동의 항목이 켜져
+    # 있어야 오고, 없으면 properties.nickname을 대신 쓴다.
+    fake_response = {
+        "id": 999,
+        "kakao_account": {"email": "no-profile-consent@example.com"},
+        "properties": {"nickname": "레거시닉네임"},
+    }
+    with patch("apps.accounts.services.kakao.requests.get") as mock_get:
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = fake_response
+
+        user = get_or_create_kakao_user("fake-token")
+
+    assert user.name == "레거시닉네임"
+
+
+@pytest.mark.django_db
+def test_kakao_login_heals_placeholder_name_on_next_login():
+    # 예전엔 닉네임을 못 읽어와서 "카카오 사용자"로 저장됐던 유저가, 다음
+    # 로그인에서 진짜 닉네임을 받아오면 자동으로 고쳐진다.
+    user = User.objects.create(
+        email="ghost-name@example.com",
+        name="카카오 사용자",
+        kakao_id="555",
+        signup_source=User.SignupSource.KAKAO,
+    )
+    fake_response = {
+        "id": 555,
+        "kakao_account": {"profile": {"nickname": "진짜이름"}},
+    }
+    with patch("apps.accounts.services.kakao.requests.get") as mock_get:
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = fake_response
+
+        get_or_create_kakao_user("fake-token")
+
+    user.refresh_from_db()
+    assert user.name == "진짜이름"
+
+
+@pytest.mark.django_db
+def test_kakao_login_does_not_overwrite_a_real_existing_name():
+    user = User.objects.create(
+        email="already-named@example.com",
+        name="유저가 직접 지은 이름",
+        kakao_id="777",
+        signup_source=User.SignupSource.KAKAO,
+    )
+    fake_response = {
+        "id": 777,
+        "kakao_account": {"profile": {"nickname": "카카오에서 온 닉네임"}},
+    }
+    with patch("apps.accounts.services.kakao.requests.get") as mock_get:
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = fake_response
+
+        get_or_create_kakao_user("fake-token")
+
+    user.refresh_from_db()
+    assert user.name == "유저가 직접 지은 이름"
 
 
 def test_exchange_kakao_code_returns_access_token(settings):
