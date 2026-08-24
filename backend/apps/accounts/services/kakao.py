@@ -65,13 +65,28 @@ def get_or_create_kakao_user(access_token: str) -> User:
     kakao_id = str(profile["id"])
     kakao_account = profile.get("kakao_account", {})
     email = kakao_account.get("email")
-    name = kakao_account.get("profile", {}).get("nickname", "")
+    # 닉네임은 두 군데에 올 수 있다 — kakao_account.profile.nickname은
+    # "카카오계정(닉네임/프로필사진)" 동의 항목이 켜져 있어야 채워지고,
+    # properties.nickname은 그 동의 없이도 기본으로 오는 경우가 많다(카카오
+    # 앱 설정에 따라 다름). 둘 다 비어있을 때만 기본 이름으로 대체한다.
+    name = (
+        kakao_account.get("profile", {}).get("nickname")
+        or profile.get("properties", {}).get("nickname")
+        or ""
+    )
 
     user = User.objects.filter(kakao_id=kakao_id).first()
     if user is not None:
+        # 예전엔 닉네임을 못 읽어와서 "카카오 사용자"로 저장된 유저가 있을 수
+        # 있다 — 이번에 진짜 이름을 받아왔으면 다음 로그인 때 자동으로
+        # 고쳐준다. 유저가 설정 화면에서 직접 바꾼 이름은 건드리지 않는다.
+        if name and user.name in ("", "카카오 사용자"):
+            user.name = name
+            user.save(update_fields=["name"])
         return user
 
     # 이메일 동의를 받은 카카오 계정이 이미 이메일 회원가입으로 가입되어 있다면 계정을 연결한다.
+    # 이미 자기 이름으로 가입돼있던 계정이니 name/signup_source는 그대로 둔다.
     if email:
         user = User.objects.filter(email__iexact=email).first()
         if user is not None:
@@ -83,6 +98,7 @@ def get_or_create_kakao_user(access_token: str) -> User:
         email=email or f"kakao_{kakao_id}@users.noreply.expirynote",
         name=name or "카카오 사용자",
         kakao_id=kakao_id,
+        signup_source=User.SignupSource.KAKAO,
         is_email_verified=bool(email),
     )
     user.set_unusable_password()
