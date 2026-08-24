@@ -5,6 +5,7 @@ export interface AuthContextValue {
   user: User | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
+  loginWithKakao: (code: string, redirectUri: string) => Promise<void>
   signup: (payload: SignupPayload) => Promise<User>
   logout: () => Promise<void>
   // 프로필 수정(PATCH /auth/me/) 응답으로 받은 최신 유저 정보를 반영할 때 씀.
