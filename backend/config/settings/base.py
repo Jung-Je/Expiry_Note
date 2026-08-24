@@ -261,11 +261,24 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Email
 # https://docs.djangoproject.com/en/5.1/topics/email/
-# Defaults to printing emails to the console in local dev. Real SMTP/이메일
-# 서비스 연동은 추후 확정.
+# 로컬 dev 기본값은 콘솔 백엔드(런서버 콘솔에 출력, 실제 발신 안 함).
+# 실제 발신은 Gmail SMTP를 쓴다 — EMAIL_BACKEND를
+# django.core.mail.backends.smtp.EmailBackend로 바꾸고 아래 EMAIL_HOST_USER/
+# EMAIL_HOST_PASSWORD(앱 비밀번호)를 채우면 된다.
 
 EMAIL_BACKEND = env(
     "EMAIL_BACKEND",
     default="django.core.mail.backends.console.EmailBackend",
 )
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@expirynote.local")
+
+# SMTP_BACKEND(위 EMAIL_BACKEND)를 쓸 때만 실제로 쓰인다. 콘솔 백엔드일 땐
+# 무시됨. 기본값은 Gmail SMTP 기준 — 다른 SMTP 서비스를 쓰려면 EMAIL_HOST/
+# EMAIL_PORT/EMAIL_USE_TLS를 그 서비스 값으로 덮어쓰면 된다.
+EMAIL_HOST = env("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+# Gmail 계정 주소와, Google 계정의 "앱 비밀번호"(일반 로그인 비밀번호 아님 —
+# 2단계 인증을 켠 뒤 발급받는 16자리 값).
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
