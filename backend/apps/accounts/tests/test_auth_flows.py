@@ -9,10 +9,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.accounts.models import User
 from apps.accounts.services import (
+    InvalidKakaoCode,
     InvalidKakaoToken,
     InvalidVerificationToken,
     change_password,
     confirm_password_reset,
+    exchange_kakao_code,
     get_or_create_kakao_user,
     request_password_reset,
     signup,
@@ -164,3 +166,47 @@ def test_kakao_login_rejects_invalid_token():
 
         with pytest.raises(InvalidKakaoToken):
             get_or_create_kakao_user("bad-token")
+
+
+def test_exchange_kakao_code_returns_access_token(settings):
+    settings.KAKAO_REST_API_KEY = "rest-api-key"
+    settings.KAKAO_CLIENT_SECRET = ""
+
+    with patch("apps.accounts.services.kakao.requests.post") as mock_post:
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {"access_token": "issued-access-token"}
+
+        token = exchange_kakao_code(
+            code="auth-code", redirect_uri="http://localhost:5173/auth/kakao/callback"
+        )
+
+    assert token == "issued-access-token"
+    _, kwargs = mock_post.call_args
+    assert kwargs["data"]["client_id"] == "rest-api-key"
+    assert kwargs["data"]["redirect_uri"] == "http://localhost:5173/auth/kakao/callback"
+    assert kwargs["data"]["code"] == "auth-code"
+    # client_secret이 설정 안 돼있으면(카카오 앱에서 꺼둔 경우) 아예 안 보낸다.
+    assert "client_secret" not in kwargs["data"]
+
+
+def test_exchange_kakao_code_includes_client_secret_when_configured(settings):
+    settings.KAKAO_REST_API_KEY = "rest-api-key"
+    settings.KAKAO_CLIENT_SECRET = "shh-its-a-secret"
+
+    with patch("apps.accounts.services.kakao.requests.post") as mock_post:
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {"access_token": "issued-access-token"}
+
+        exchange_kakao_code(code="auth-code", redirect_uri="http://localhost:5173/x")
+
+    _, kwargs = mock_post.call_args
+    assert kwargs["data"]["client_secret"] == "shh-its-a-secret"
+
+
+def test_exchange_kakao_code_rejects_invalid_code():
+    with patch("apps.accounts.services.kakao.requests.post") as mock_post:
+        mock_post.return_value.status_code = 400
+        mock_post.return_value.text = "invalid_grant"
+
+        with pytest.raises(InvalidKakaoCode):
+            exchange_kakao_code(code="bad-code", redirect_uri="http://localhost:5173/x")
