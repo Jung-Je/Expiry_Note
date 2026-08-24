@@ -1,9 +1,11 @@
 import axios, { type AxiosRequestConfig } from 'axios'
-import { clearTokens, getAccessToken, getRefreshToken, setTokens } from '../features/auth/tokenStorage'
+import { clearAccessToken, getAccessToken, setAccessToken } from '../features/auth/tokenStorage'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1'
 
-export const api = axios.create({ baseURL })
+// withCredentials가 있어야 refresh token이 담긴 httpOnly 쿠키가 요청에
+// 실제로 실린다(백엔드도 CORS_ALLOW_CREDENTIALS=True로 맞춰져 있음).
+export const api = axios.create({ baseURL, withCredentials: true })
 
 api.interceptors.request.use((config) => {
   const token = getAccessToken()
@@ -19,8 +21,30 @@ interface RetriableConfig extends AxiosRequestConfig {
 
 let refreshPromise: Promise<string> | null = null
 
-// access token이 만료되면(401) refresh token으로 한 번만 재발급을 시도하고,
-// 그 요청을 재시도한다. refresh도 실패하면 로그인 페이지로 보낸다.
+// refresh token은 httpOnly 쿠키로만 오가므로 body 없이 요청만 보내면 된다 —
+// 브라우저가 쿠키를 자동으로 실어 보낸다. 동시에 여러 곳에서 401을 만나도
+// 재발급 요청은 한 번만 나가도록 진행 중인 Promise를 공유한다.
+export function refreshAccessToken(): Promise<string> {
+  refreshPromise ??= axios
+    .post(`${baseURL}/auth/token/refresh/`, {}, { withCredentials: true })
+    .then((res) => {
+      const access = res.data.access as string
+      setAccessToken(access)
+      return access
+    })
+    .catch((error) => {
+      clearAccessToken()
+      throw error
+    })
+    .finally(() => {
+      refreshPromise = null
+    })
+  return refreshPromise
+}
+
+// access token이 만료되면(401) refresh 쿠키로 한 번만 재발급을 시도하고,
+// 그 요청을 재시도한다. refresh도 실패하면(쿠키가 없거나 만료) 에러를 그대로
+// 던진다 — 호출 쪽(AuthContext)에서 로그인 페이지로 보낸다.
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -31,33 +55,8 @@ api.interceptors.response.use(
     }
     original._retry = true
 
-    const refresh = getRefreshToken()
-    if (!refresh) {
-      clearTokens()
-      throw error
-    }
-
-    try {
-      refreshPromise ??= axios
-        .post(`${baseURL}/auth/token/refresh/`, { refresh })
-        .then((res) => {
-          // 백엔드가 ROTATE_REFRESH_TOKENS=True라 요청 때 쓴 refresh는 응답과
-          // 동시에 블랙리스트되고, 새 refresh가 응답에 함께 내려온다. 옛
-          // refresh를 그대로 재저장하면 다음 재발급 시도가 블랙리스트된
-          // 토큰으로 실패해 강제 로그아웃된다 — 반드시 응답의 새 값을 써야 한다.
-          setTokens({ access: res.data.access, refresh: res.data.refresh })
-          return res.data.access as string
-        })
-        .finally(() => {
-          refreshPromise = null
-        })
-
-      const access = await refreshPromise
-      original.headers = { ...original.headers, Authorization: `Bearer ${access}` }
-      return api(original)
-    } catch (refreshError) {
-      clearTokens()
-      throw refreshError
-    }
+    const access = await refreshAccessToken()
+    original.headers = { ...original.headers, Authorization: `Bearer ${access}` }
+    return api(original)
   },
 )
