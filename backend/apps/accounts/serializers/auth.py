@@ -49,7 +49,12 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 
 class KakaoLoginSerializer(serializers.Serializer):
-    access_token = serializers.CharField()
+    # 프론트가 Kakao.Auth.authorize()로 받은 인가 코드. access_token 교환은
+    # 백엔드가 한다(apps/accounts/services/kakao.py의 exchange_kakao_code).
+    code = serializers.CharField()
+    # authorize() 호출 때 쓴 redirect_uri와 정확히 같아야 한다(카카오 쪽
+    # 검증 대상).
+    redirect_uri = serializers.CharField()
 
 
 class UpdateProfileSerializer(serializers.ModelSerializer):
