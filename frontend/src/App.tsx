@@ -11,6 +11,8 @@ import { KakaoCallbackPage } from './pages/auth/KakaoCallbackPage'
 import { LoginPage } from './pages/auth/LoginPage'
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage'
 import { VerifyEmailPage } from './pages/auth/VerifyEmailPage'
+import { BillingFailPage } from './pages/billing/BillingFailPage'
+import { BillingSuccessPage } from './pages/billing/BillingSuccessPage'
 import { NotificationsPage } from './pages/NotificationsPage'
 import { PricingPage } from './pages/PricingPage'
 import { SchedulePage } from './pages/SchedulePage'
@@ -34,6 +36,9 @@ export default function App() {
             <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
 
             <Route element={<ProtectedRoute />}>
+              <Route path="/billing/success" element={<BillingSuccessPage />} />
+              <Route path="/billing/fail" element={<BillingFailPage />} />
+
               <Route element={<AppLayout />}>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/schedule" element={<SchedulePage />} />
