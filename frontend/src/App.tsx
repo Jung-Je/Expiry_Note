@@ -7,6 +7,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { ItemDetailPage } from './pages/ItemDetailPage'
 import { ItemFormPage } from './pages/ItemFormPage'
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage'
+import { KakaoCallbackPage } from './pages/auth/KakaoCallbackPage'
 import { LoginPage } from './pages/auth/LoginPage'
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage'
 import { VerifyEmailPage } from './pages/auth/VerifyEmailPage'
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
+            <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
 
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
