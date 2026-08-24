@@ -33,6 +33,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authApi.signup(payload)
   }
 
+  function clearSession() {
+    clearAccessToken()
+    setUser(null)
+  }
+
   async function logout() {
     try {
       await authApi.logout()
@@ -40,13 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 백엔드 호출이 실패하더라도(네트워크 오류 등) 프론트 쪽 상태는 반드시
       // 로그아웃 처리한다 — refresh 쿠키 자체는 서버 응답으로만 지워지므로,
       // 남아있더라도 access token이 없으면 더 이상 API 호출은 안 된다.
-      clearAccessToken()
-      setUser(null)
+      clearSession()
     }
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, signup, logout, setUser, clearSession }}>
       {children}
     </AuthContext.Provider>
   )
