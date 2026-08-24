@@ -6,7 +6,10 @@ import { ProtectedRoute } from './features/auth/ProtectedRoute'
 import { DashboardPage } from './pages/DashboardPage'
 import { ItemDetailPage } from './pages/ItemDetailPage'
 import { ItemFormPage } from './pages/ItemFormPage'
+import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage'
 import { LoginPage } from './pages/auth/LoginPage'
+import { ResetPasswordPage } from './pages/auth/ResetPasswordPage'
+import { VerifyEmailPage } from './pages/auth/VerifyEmailPage'
 import { PricingPage } from './pages/PricingPage'
 import { SchedulePage } from './pages/SchedulePage'
 import { SettingsPage } from './pages/SettingsPage'
@@ -23,6 +26,9 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
 
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
