@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
+import { startKakaoLogin } from '../../features/auth/kakao'
 import { useAuth } from '../../features/auth/useAuth'
 
 const schema = z.object({
@@ -18,6 +19,7 @@ export function LoginPage() {
   const location = useLocation()
   const redirectMessage = (location.state as { message?: string } | null)?.message
   const [serverError, setServerError] = useState<string | null>(null)
+  const [kakaoError, setKakaoError] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
@@ -31,6 +33,16 @@ export function LoginPage() {
       navigate('/', { replace: true })
     } catch {
       setServerError('이메일 또는 비밀번호가 올바르지 않습니다.')
+    }
+  }
+
+  async function handleKakaoLogin() {
+    setKakaoError(null)
+    try {
+      // 성공하면 카카오 동의 화면으로 페이지가 리다이렉트된다.
+      await startKakaoLogin()
+    } catch {
+      setKakaoError('카카오 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해주세요.')
     }
   }
 
@@ -87,6 +99,23 @@ export function LoginPage() {
           로그인
         </button>
       </form>
+
+      <div className="flex items-center gap-3 text-xs text-slate-400">
+        <span className="h-px flex-1 bg-slate-200" />
+        또는
+        <span className="h-px flex-1 bg-slate-200" />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={handleKakaoLogin}
+          className="rounded-md bg-[#FEE500] py-2 text-sm font-medium text-[#191919] transition hover:brightness-95"
+        >
+          카카오로 로그인
+        </button>
+        {kakaoError && <p className="text-sm text-red-600">{kakaoError}</p>}
+      </div>
 
       <p className="text-center text-sm text-slate-500">
         아직 계정이 없으신가요?{' '}
