@@ -40,6 +40,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     카카오 로그인으로 처음 가입하는 사용자는 비밀번호 없이(unusable password) 생성됩니다.
     """
 
+    class SignupSource(models.TextChoices):
+        EMAIL = "email", "이메일"
+        KAKAO = "kakao", "카카오"
+        GOOGLE = "google", "구글"
+
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=50)
 
@@ -47,6 +52,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     # 로그인 자체는 막지 않고, 인증 여부만 별도로 추적합니다.
     is_email_verified = models.BooleanField(default=False)
+
+    # 가입 경로. 소셜 로그인 제공자별 화면 분기(예: 설정에서 "카카오 계정으로
+    # 연동됨" 표시)나 이메일/비밀번호 관련 기능을 소셜 가입 유저에게 숨기는 데
+    # 쓴다. kakao_id 등 provider별 id 필드와는 별개로, "이 유저가 어떻게
+    # 가입했는지" 자체를 명시적으로 기록해둔다.
+    signup_source = models.CharField(
+        max_length=20, choices=SignupSource.choices, default=SignupSource.EMAIL
+    )
 
     # 카카오 계정과 연동된 경우에만 값이 있음.
     kakao_id = models.CharField(max_length=64, unique=True, null=True, blank=True)

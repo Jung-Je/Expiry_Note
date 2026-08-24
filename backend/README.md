@@ -24,6 +24,24 @@ Django + Django REST Framework 기반 API 서버입니다. 패키지/가상환�
    DJANGO_DEBUG=True
    DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
 
+   # JWT 서명 전용 키(선택). 없으면 DJANGO_SECRET_KEY를 그대로 쓴다. 배포
+   # 환경에서는 세션/CSRF 서명(DJANGO_SECRET_KEY)과 분리하기 위해 별도의
+   # 랜덤 값을 설정하는 걸 권장한다.
+   # JWT_SIGNING_KEY=change-me-to-a-different-random-secret-key
+
+   # refresh token httpOnly 쿠키의 Secure 속성(선택). 기본값은 DJANGO_DEBUG의
+   # 반대값 — 로컬 dev(http://localhost)에서는 꺼져 있어야 쿠키가 저장된다.
+   # 배포 준하는 로컬 테스트(DJANGO_ENV_FILE=.env.prod)에서 여전히 http로
+   # 접속한다면 False로 덮어써야 한다.
+   # JWT_REFRESH_COOKIE_SECURE=False
+
+   # 카카오 로그인 인가 코드 -> access_token 교환에 쓴다(카카오 디벨로퍼스
+   # > 내 애플리케이션 > 앱 설정 > 앱 키 > REST API 키). client_secret은
+   # 카카오 앱에서 "클라이언트 시크릿" 기능을 켰을 때만 필요 — 꺼져 있으면
+   # 비워둬도 된다. 둘 다 절대 프론트로 넘기면 안 되는 값이라 백엔드에만 둔다.
+   KAKAO_REST_API_KEY=<카카오 REST API 키>
+   # KAKAO_CLIENT_SECRET=<카카오 클라이언트 시크릿, 켜져 있는 경우만>
+
    # 로컬 PostgreSQL(pgAdmin4로 관리)의 expiry_note_dev 데이터베이스.
    DB_ENGINE=django.db.backends.postgresql
    DB_NAME=expiry_note_dev
@@ -127,17 +145,23 @@ backend/
 | Method | Path | 설명 |
 | --- | --- | --- |
 | POST | `signup/` | 이메일 회원가입. 가입 직후 인증 메일 발송(자동 로그인 안 됨) |
-| POST | `login/` | 이메일 로그인 → `{ access, refresh, user }` |
-| POST | `token/refresh/` | refresh token으로 access token 재발급 |
+| POST | `login/` | 이메일 로그인 → `{ access, user }` (refresh는 httpOnly 쿠키로) |
+| POST | `token/refresh/` | httpOnly 쿠키의 refresh token으로 access token 재발급 → `{ access }` |
 | POST | `email/verify/` | 이메일 인증 링크의 `uid`/`token`으로 인증 완료 처리 |
 | POST | `password/reset/` | 비밀번호 재설정 메일 발송 (가입 여부와 무관하게 항상 200) |
 | POST | `password/reset/confirm/` | `uid`/`token`/`new_password`로 비밀번호 변경 |
-| POST | `kakao/login/` | 프론트가 카카오 JS SDK로 받은 `access_token`으로 로그인/가입 |
-| GET | `me/` | 현재 로그인한 사용자 정보 (인증 필요) |
+| POST | `password/change/` | 로그인 상태에서 `current_password`/`new_password`로 비밀번호 변경 (인증 필요) |
+| POST | `logout/` | 쿠키의 refresh token 블랙리스트 처리 + 쿠키 삭제 (인증 필요) |
+| POST | `kakao/login/` | 프론트가 카카오 JS SDK로 받은 `code`/`redirect_uri`로 로그인/가입 |
+| GET/PATCH | `me/` | 현재 로그인한 사용자 정보 조회/수정 (인증 필요) |
+| DELETE | `me/` | 회원 탈퇴 — 연관 항목/알림 cascade 삭제, 발급된 refresh token 전부 블랙리스트 (인증 필요) |
 
 - 로그인 아이디는 이메일입니다 (`AUTH_USER_MODEL = "accounts.User"`, `apps/accounts/models/user.py`).
 - 이메일 발송은 `EMAIL_BACKEND`가 기본적으로 콘솔 백엔드라 실제로 나가지 않고 `runserver` 콘솔에 링크가 출력됩니다. 실제 SMTP/이메일 서비스 연동은 추후 확정.
-- 카카오 로그인은 백엔드가 OAuth 코드 교환을 하지 않습니다 — 프론트엔드가 카카오 JS SDK로 얻은 `access_token`을 그대로 넘기면, 백엔드가 그 토큰으로 카카오 사용자 정보 API를 호출해 검증합니다 (`apps/accounts/services/kakao.py`).
+- 카카오 로그인은 프론트엔드가 카카오 JS SDK(`Kakao.Auth.authorize()`)로 인가 코드(`code`)만 받아서 넘기고, 그 코드를 `access_token`으로 교환하는 건 반드시 백엔드가 합니다(`exchange_kakao_code`, `apps/accounts/services/kakao.py`) — client_secret처럼 프론트로 넘기면 안 되는 값이 필요할 수 있어서입니다. 교환한 `access_token`으로 카카오 사용자 정보 API를 호출해 검증한 뒤 로컬 사용자와 매칭/생성합니다. `redirect_uri`는 프론트가 `authorize()` 호출 때 쓴 값과 정확히 같아야 합니다(카카오 쪽 검증 대상).
+- **토큰 관리**: access 30분/refresh 14일, 재발급마다 refresh를 로테이션하고 옛 토큰은 블랙리스트 처리(`SIMPLE_JWT`). 비밀번호 변경/재설정/회원탈퇴 시점엔 그 유저의 발급된 refresh token을 전부 블랙리스트 처리해 기존 세션을 강제 종료합니다(`apps/accounts/services/token_revocation.py`).
+- **refresh token은 httpOnly 쿠키로만 오갑니다** — `login/`·`token/refresh/`·`kakao/login/` 응답 바디에는 access token과 user 정보만 들어있고, refresh token은 JS가 접근할 수 없는 httpOnly 쿠키(`Set-Cookie`, `/api/v1/auth/` 경로로 범위 제한)로만 내려갑니다. 재발급도 그 쿠키를 읽어서 하므로 프론트가 body로 refresh를 보낼 필요가 없습니다 — 브라우저가 쿠키를 자동으로 실어 보냅니다(`apps/accounts/cookies.py`). 크로스오리진(로컬 dev 기준 5173→8000)으로 쿠키를 주고받아야 해서 `CORS_ALLOW_CREDENTIALS=True`이고, 프론트도 axios `withCredentials: true`가 필요합니다.
+- **Rate limiting**: 위 표의 `signup/`·`login/`·`token/refresh/`·`email/verify/`·`password/reset/`·`password/reset/confirm/`·`password/change/`·`kakao/login/`은 IP 기준으로 스로틀됩니다(`ScopedRateThrottle`, rate는 `config/settings/base.py`의 `REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]`).
 
 ### 앱 구조 컨벤션
 

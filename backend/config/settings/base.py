@@ -173,6 +173,23 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    # ScopedRateThrottle은 뷰에 throttle_scope가 없으면 아무것도 하지 않으므로
+    # 전역으로 켜둬도 안전하다 — 실제로는 아래 스코프가 지정된 인증 관련 뷰
+    # (로그인, 회원가입, 비밀번호 재설정, 카카오 로그인 등)만 제한된다.
+    # 브루트포스/이메일 enumeration/스팸성 가입을 IP 기준으로 막기 위함.
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "auth-login": "10/min",
+        "auth-signup": "20/hour",
+        "auth-kakao-login": "10/min",
+        "auth-password-reset-request": "5/hour",
+        "auth-password-reset-confirm": "10/hour",
+        "auth-email-verify": "10/hour",
+        "auth-password-change": "20/hour",
+        "auth-token-refresh": "30/min",
+    },
 }
 
 
@@ -184,7 +201,36 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=14),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
+    # SECRET_KEY(세션/CSRF 서명에도 쓰임)와 분리된 별도 키로 JWT를 서명한다.
+    # JWT_SIGNING_KEY가 없으면 지금까지처럼 SECRET_KEY를 그대로 쓴다 — 로컬
+    # .envs/.env.dev를 새로 만들 필요는 없고, 배포 시에는 별도 값을 주는 걸
+    # 권장한다(둘 중 하나가 새도 다른 하나까지 위험해지지 않도록).
+    "SIGNING_KEY": env("JWT_SIGNING_KEY", default=SECRET_KEY),
 }
+
+
+# Kakao login
+# 인가 코드 -> access_token 교환은 반드시 백엔드에서 한다(apps/accounts/
+# services/kakao.py) — REST API 키와 client_secret은 프론트(브라우저)로
+# 절대 넘기면 안 되는 값이라서다. client_secret은 카카오 앱에서 "클라이언트
+# 시크릿" 기능을 켰을 때만 필요 — 꺼져 있으면 빈 값으로 둬도 된다.
+KAKAO_REST_API_KEY = env("KAKAO_REST_API_KEY", default="")
+KAKAO_CLIENT_SECRET = env("KAKAO_CLIENT_SECRET", default="")
+
+
+# Refresh token cookie
+# refresh token은 프론트 JS가 아예 접근할 수 없는 httpOnly 쿠키로만 오간다
+# (access token만 응답 바디로 내려주고 프론트가 메모리에 들고 있음) — XSS로
+# access token이 새더라도 훨씬 수명이 긴 refresh token까지 같이 새지 않게
+# 하기 위함. 실제로 쿠키를 심고/지우는 코드는 apps/accounts/cookies.py.
+JWT_REFRESH_COOKIE_NAME = "refresh_token"
+# /api/v1/auth/ 아래 요청에만 브라우저가 이 쿠키를 실어 보내도록 범위를 좁힌다.
+JWT_REFRESH_COOKIE_PATH = "/api/v1/auth/"
+JWT_REFRESH_COOKIE_SAMESITE = "Lax"
+# 로컬 dev(http://localhost)에서는 Secure 쿠키가 아예 저장되지 않으므로 꺼두고,
+# DEBUG=False인 환경(배포 준하는 로컬 테스트 포함)에서는 기본으로 켠다.
+# 필요하면 JWT_REFRESH_COOKIE_SECURE로 직접 덮어쓸 수 있다.
+JWT_REFRESH_COOKIE_SECURE = env.bool("JWT_REFRESH_COOKIE_SECURE", default=not DEBUG)
 
 
 # CORS
@@ -195,6 +241,10 @@ CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS",
     default=["http://localhost:5173"],
 )
+# refresh token을 httpOnly 쿠키로 주고받으려면 브라우저가 크로스오리진
+# 요청에도 쿠키를 실어 보내야 한다 — CORS_ALLOWED_ORIGINS가 와일드카드가
+# 아니라 명시적 목록이라 True로 켜도 안전하다.
+CORS_ALLOW_CREDENTIALS = True
 
 
 # Email

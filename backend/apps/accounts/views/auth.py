@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -5,9 +6,12 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
 
+from apps.accounts.cookies import clear_refresh_cookie, set_refresh_cookie
 from apps.accounts.serializers import (
     ChangePasswordSerializer,
+    CookieTokenRefreshSerializer,
     EmailTokenObtainPairSerializer,
     EmailVerificationConfirmSerializer,
     KakaoLoginSerializer,
@@ -20,11 +24,13 @@ from apps.accounts.serializers import (
 )
 from apps.accounts.services import (
     InvalidCurrentPassword,
+    InvalidKakaoCode,
     InvalidKakaoToken,
     InvalidResetToken,
     InvalidVerificationToken,
     change_password,
     confirm_password_reset,
+    exchange_kakao_code,
     get_or_create_kakao_user,
     request_password_reset,
     signup,
@@ -35,6 +41,7 @@ from apps.accounts.services import (
 
 class SignupView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth-signup"
 
     def post(self, request):
         serializer = SignupSerializer(data=request.data)
@@ -50,6 +57,32 @@ class SignupView(APIView):
 class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
     serializer_class = EmailTokenObtainPairSerializer
+    throttle_scope = "auth-login"
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        # refresh는 응답 바디로 내려주지 않고 httpOnly 쿠키로만 준다 — access와
+        # user 정보만 바디에 남긴다.
+        refresh = response.data.pop("refresh", None)
+        if refresh:
+            set_refresh_cookie(response, refresh)
+        return response
+
+
+class TokenRefreshView(BaseTokenRefreshView):
+    """refresh token을 요청 바디가 아니라 httpOnly 쿠키에서 읽고,
+    로테이션된 새 refresh도 다시 쿠키로 심어준다 (바디에는 access만 남김).
+    """
+
+    serializer_class = CookieTokenRefreshSerializer
+    throttle_scope = "auth-token-refresh"
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        refresh = response.data.pop("refresh", None)
+        if refresh:
+            set_refresh_cookie(response, refresh)
+        return response
 
 
 class MeView(APIView):
@@ -71,6 +104,7 @@ class MeView(APIView):
 
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_scope = "auth-password-change"
 
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
@@ -90,17 +124,26 @@ class LogoutView(APIView):
     def post(self, request):
         serializer = LogoutSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        try:
-            RefreshToken(serializer.validated_data["refresh"]).blacklist()
-        except TokenError:
-            return Response(
-                {"detail": "유효하지 않은 토큰입니다."}, status=status.HTTP_400_BAD_REQUEST
-            )
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        # 바디에 refresh가 오면(테스트, 쿠키 도입 전 클라이언트) 그쪽을 쓰고,
+        # 없으면 쿠키 값을 쓴다.
+        raw_refresh = serializer.validated_data.get("refresh") or request.COOKIES.get(
+            settings.JWT_REFRESH_COOKIE_NAME, ""
+        )
+        if raw_refresh:
+            try:
+                RefreshToken(raw_refresh).blacklist()
+            except TokenError:
+                return Response(
+                    {"detail": "유효하지 않은 토큰입니다."}, status=status.HTTP_400_BAD_REQUEST
+                )
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        clear_refresh_cookie(response)
+        return response
 
 
 class EmailVerificationConfirmView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth-email-verify"
 
     def post(self, request):
         serializer = EmailVerificationConfirmSerializer(data=request.data)
@@ -117,6 +160,7 @@ class EmailVerificationConfirmView(APIView):
 
 class PasswordResetRequestView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth-password-reset-request"
 
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
@@ -128,6 +172,7 @@ class PasswordResetRequestView(APIView):
 
 class PasswordResetConfirmView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth-password-reset-confirm"
 
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
@@ -148,22 +193,28 @@ class PasswordResetConfirmView(APIView):
 
 class KakaoLoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth-kakao-login"
 
     def post(self, request):
         serializer = KakaoLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            user = get_or_create_kakao_user(serializer.validated_data["access_token"])
-        except InvalidKakaoToken:
+            access_token = exchange_kakao_code(
+                code=serializer.validated_data["code"],
+                redirect_uri=serializer.validated_data["redirect_uri"],
+            )
+            user = get_or_create_kakao_user(access_token)
+        except (InvalidKakaoCode, InvalidKakaoToken):
             return Response(
-                {"detail": "유효하지 않은 카카오 액세스 토큰입니다."},
+                {"detail": "카카오 로그인에 실패했습니다. 다시 시도해주세요."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         refresh = RefreshToken.for_user(user)
-        return Response(
+        response = Response(
             {
                 "access": str(refresh.access_token),
-                "refresh": str(refresh),
                 "user": UserSerializer(user).data,
             }
         )
+        set_refresh_cookie(response, str(refresh))
+        return response

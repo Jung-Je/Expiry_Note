@@ -1,8 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
+import { startKakaoLogin } from '../../features/auth/kakao'
 import { useAuth } from '../../features/auth/useAuth'
 
 const schema = z.object({
@@ -15,7 +16,10 @@ type FormValues = z.infer<typeof schema>
 export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const redirectMessage = (location.state as { message?: string } | null)?.message
   const [serverError, setServerError] = useState<string | null>(null)
+  const [kakaoError, setKakaoError] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
@@ -32,12 +36,24 @@ export function LoginPage() {
     }
   }
 
+  async function handleKakaoLogin() {
+    setKakaoError(null)
+    try {
+      // 성공하면 카카오 동의 화면으로 페이지가 리다이렉트된다.
+      await startKakaoLogin()
+    } catch {
+      setKakaoError('카카오 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해주세요.')
+    }
+  }
+
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">다시 만나서 반가워요</h1>
         <p className="mt-1 text-sm text-slate-500">만료노트에 로그인하세요.</p>
       </div>
+
+      {redirectMessage && <p className="text-sm text-emerald-600">{redirectMessage}</p>}
 
       <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="flex flex-col gap-1">
@@ -55,9 +71,14 @@ export function LoginPage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-700" htmlFor="password">
-            비밀번호
-          </label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-slate-700" htmlFor="password">
+              비밀번호
+            </label>
+            <Link className="text-xs font-medium text-indigo-600" to="/forgot-password">
+              비밀번호를 잊으셨나요?
+            </Link>
+          </div>
           <input
             id="password"
             type="password"
@@ -78,6 +99,23 @@ export function LoginPage() {
           로그인
         </button>
       </form>
+
+      <div className="flex items-center gap-3 text-xs text-slate-400">
+        <span className="h-px flex-1 bg-slate-200" />
+        또는
+        <span className="h-px flex-1 bg-slate-200" />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={handleKakaoLogin}
+          className="rounded-md bg-[#FEE500] py-2 text-sm font-medium text-[#191919] transition hover:brightness-95"
+        >
+          카카오로 로그인
+        </button>
+        {kakaoError && <p className="text-sm text-red-600">{kakaoError}</p>}
+      </div>
 
       <p className="text-center text-sm text-slate-500">
         아직 계정이 없으신가요?{' '}

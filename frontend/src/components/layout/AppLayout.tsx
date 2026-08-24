@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { to: '/schedule', label: '일정' },
   { to: '/items/new', label: '항목 추가' },
   { to: '/stats', label: '통계' },
+  { to: '/notifications', label: '알림' },
   { to: '/settings', label: '설정' },
   { to: '/pricing', label: '요금제' },
 ]

@@ -1,25 +1,19 @@
-// MVP 단순화를 위해 access/refresh 토큰을 모두 localStorage에 저장한다.
-// XSS에 노출되면 탈취될 수 있으므로, 정식 출시 전에는 httpOnly 쿠키 기반으로
-// 전환하는 것을 검토한다.
-const ACCESS_KEY = 'expiry-note.access-token'
-const REFRESH_KEY = 'expiry-note.refresh-token'
+// access token은 메모리에만 보관한다 — 페이지를 새로고침하면 사라지는데,
+// AuthProvider가 마운트 시 httpOnly refresh 쿠키로 조용히 재발급받아 채운다
+// (lib/api.ts의 refreshAccessToken 참고). refresh token은 JS가 아예 접근할
+// 수 없는 httpOnly 쿠키로만 오가므로 여기서 다루지 않는다 — localStorage에
+// 두 토큰을 함께 저장하던 이전 방식은 XSS로 탈취되면 refresh token(수명이
+// 훨씬 긺)까지 같이 새는 문제가 있었다.
+let accessToken: string | null = null
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem(ACCESS_KEY)
+  return accessToken
 }
 
-export function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_KEY)
+export function setAccessToken(token: string | null): void {
+  accessToken = token
 }
 
-export function setTokens(tokens: { access: string; refresh?: string }): void {
-  localStorage.setItem(ACCESS_KEY, tokens.access)
-  if (tokens.refresh) {
-    localStorage.setItem(REFRESH_KEY, tokens.refresh)
-  }
-}
-
-export function clearTokens(): void {
-  localStorage.removeItem(ACCESS_KEY)
-  localStorage.removeItem(REFRESH_KEY)
+export function clearAccessToken(): void {
+  accessToken = null
 }

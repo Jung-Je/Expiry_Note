@@ -7,7 +7,7 @@ from apps.accounts.models import User
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "email", "name", "is_email_verified", "date_joined"]
+        fields = ["id", "email", "name", "is_email_verified", "signup_source", "date_joined"]
         read_only_fields = fields
 
 
@@ -49,7 +49,12 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 
 class KakaoLoginSerializer(serializers.Serializer):
-    access_token = serializers.CharField()
+    # 프론트가 Kakao.Auth.authorize()로 받은 인가 코드. access_token 교환은
+    # 백엔드가 한다(apps/accounts/services/kakao.py의 exchange_kakao_code).
+    code = serializers.CharField()
+    # authorize() 호출 때 쓴 redirect_uri와 정확히 같아야 한다(카카오 쪽
+    # 검증 대상).
+    redirect_uri = serializers.CharField()
 
 
 class UpdateProfileSerializer(serializers.ModelSerializer):
@@ -68,4 +73,6 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class LogoutSerializer(serializers.Serializer):
-    refresh = serializers.CharField()
+    # 바디에 refresh가 안 오면(쿠키 기반 플로우) 쿠키 값을 대신 쓴다
+    # (views/auth.py의 LogoutView 참고).
+    refresh = serializers.CharField(required=False)
