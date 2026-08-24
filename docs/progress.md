@@ -6,14 +6,17 @@
 
 ## 지금 커밋 안 된 변경사항부터 처리하세요
 
-알림 생성/토큰 정리 스케줄러(`runscheduler`)가 아직 커밋 전입니다. 이전 커밋들(카카오 로그인, `User.signup_source` 추가 등)은 이미 파일별로 커밋됐습니다.
+결제/구독(토스페이먼츠 자동결제) 기능이 아직 커밋 전입니다. 백엔드·프론트엔드 전부 구현하고 테스트 키로 라이브 검증까지 마쳤습니다. 이전 커밋들(카카오 로그인, 알림/토큰 정리 스케줄러 등)은 이미 파일별로 커밋됐습니다.
 
-- **`backend/apps/core/management/commands/runscheduler.py`** (신규) — APScheduler로 `generate_notifications`(매일 09:00)/`flushexpiredtokens`(매주 월 03:00)를 스케줄링하는 독립 워커 커맨드. 배포 플랫폼이 아직 미정이라 시스템 cron 대신 프로세스 자체적으로 스케줄링 — 어느 플랫폼에 배포하든 그대로 씀
-- **`backend/pyproject.toml`** — `apscheduler` 의존성 추가
-- **`backend/apps/core/tests/`** (신규 디렉터리, 기존 빈 `tests.py` 대체) — `test_runscheduler.py`: 잡 등록/실패해도 안 죽는지/DB 커넥션 정리 검증
-- 문서: `backend/README.md`에 "알림 생성/토큰 정리 스케줄러" 섹션 추가, 프로젝트 구조 트리에 빠져있던 `items`/`notifications` 앱도 같이 채워넣음
+- **`backend/apps/billing/`** (신규 앱) — `Subscription`(플랜 FREE/PREMIUM × 상태 ACTIVE/CANCELED, `customer_key`/`billing_key`/`current_period_end`)·`Payment` 모델, `services/toss.py`(빌링키 발급/자동결제 승인 API 클라이언트), `services/subscription.py`(구독 시작/해지/갱신 오케스트레이션), REST 뷰/시리얼라이저/urls, admin 등록. `POST /billing/subscribe/`·`POST /billing/cancel/`·`GET /billing/subscription/`·`GET /billing/payments/`
+- **`backend/apps/billing/management/commands/renew_subscriptions.py`** — 오늘이 결제 예정일인 프리미엄 구독을 갱신 청구. `runscheduler`에 매일 08:00으로 등록됨(`apps/core/management/commands/runscheduler.py` 수정)
+- **`backend/config/settings/base.py`** — `apps.billing` 추가, `billing-subscribe` 스로틀 rate, `TOSS_CLIENT_KEY`/`TOSS_SECRET_KEY` 설정
+- **`frontend/src/features/billing/`** (신규) — `api.ts`/`hooks.ts`(TanStack Query), `toss.ts`(토스 SDK 로드 + `requestBillingAuth()`)
+- **`frontend/src/pages/PricingPage.tsx`** — 무료/프리미엄 플랜 비교, 구독/해지 버튼, 결제 내역 테이블로 전면 재작성(기존 자리표시자 대체)
+- **`frontend/src/pages/billing/{BillingSuccessPage,BillingFailPage}.tsx`** (신규) — 토스 카드 등록 결제창의 성공/실패 리다이렉트 콜백 처리
+- 문서: `backend/README.md`에 "결제/구독" 섹션 추가, 스케줄러 섹션에 `renew_subscriptions` 반영. `frontend/README.md`에 "구독/결제" 섹션 추가. 루트 `README.md` 개발 현황에서 `PricingPage` 자리표시자 문구 제거
 
-백엔드 테스트 85개(기존 81 + 신규 4)·`check-all.sh` 확인 완료. `runscheduler`를 실제로 몇 초 띄워서 정상 기동 로그("스케줄러 시작 (timezone=Asia/Seoul) — ...")까지 확인함 — 실제 스케줄(다음날 09:00 등)이 도는 것 자체는 배포 이후에나 확인 가능. 커밋만 하면 됩니다.
+백엔드 테스트 108개(기존 85 + 신규 23)·`check-all.sh` 확인 완료. 토스페이먼츠 테스트(API 개별 연동) 키로 실제 브라우저에서 카드 등록 → 빌링키 발급 → 첫 결제 승인 → 프리미엄 전환 → 결제 내역 표시까지 라이브로 검증함. 실패 리다이렉트(`NOT_SUPPORTED_CARD_TYPE`)도 `/billing/fail` 페이지가 올바르게 에러 메시지를 보여주는 것까지 확인함. 커밋만 하면 됩니다.
 
 ```bash
 bash scripts/check-all.sh   # 백엔드 포맷팅+린트+Django check, 프론트 린트까지 한 번에
@@ -51,9 +54,10 @@ cd frontend && npm run test # 프론트 테스트
   - 인앱 알림 목록/읽음 처리(`GET /`, `POST /{id}/read/`, `POST /read-all/`)
   - 푸시 알림 설정 저장(`GET/PATCH /settings/`) — 실제 푸시 발송(FCM/APNs)은 미구현, 설정값만 저장
   - `generate_due_notifications()` 서비스 + `manage.py generate_notifications` 관리 명령어 — 매일 1회 도는 걸 전제로 만듦
-- **`apps/core`** — 헬스체크(`health/`) + `manage.py runscheduler`(알림 생성/토큰 정리 스케줄러, 아래 참고)
+- **`apps/core`** — 헬스체크(`health/`) + `manage.py runscheduler`(알림 생성/토큰 정리/구독 갱신 스케줄러, 아래 참고)
+- **`apps/billing`** — 프리미엄 구독/결제(토스페이먼츠 자동결제, 아래 "결제/구독" 참고)
 
-백엔드 테스트 85개, 커버리지 90%대.
+백엔드 테스트 108개, 커버리지 90%대.
 
 ### 인증 보안 강화 (JWT 토큰 관리)
 
@@ -71,11 +75,24 @@ cd frontend && npm run test # 프론트 테스트
 
 `manage.py flushexpiredtokens` 크론 스케줄링은 아래 "알림 생성/토큰 정리 스케줄러"에서 처리했습니다.
 
-### 알림 생성/토큰 정리 스케줄러
+### 알림 생성/토큰 정리/구독 갱신 스케줄러
 
-배포 플랫폼이 아직 정해지지 않아 시스템 cron에 의존하는 대신, `apps/core/management/commands/runscheduler.py`가 [APScheduler](https://apscheduler.readthedocs.io/)로 `generate_notifications`(매일 09:00)와 `flushexpiredtokens`(매주 월요일 03:00)를 프로세스 안에서 직접 스케줄링합니다 — `runserver`와는 별개의 독립 프로세스로 띄우면 되고, Docker 별도 서비스든 systemd든 `nohup ... &`든 배포 플랫폼과 무관하게 동일하게 동작합니다. 나중에 배포 플랫폼이 자체 cron 기능을 제공하면 이 워커 대신 그걸 써도 됩니다(관리 명령어 자체는 그대로 재사용).
+배포 플랫폼이 아직 정해지지 않아 시스템 cron에 의존하는 대신, `apps/core/management/commands/runscheduler.py`가 [APScheduler](https://apscheduler.readthedocs.io/)로 `renew_subscriptions`(매일 08:00)·`generate_notifications`(매일 09:00)·`flushexpiredtokens`(매주 월요일 03:00)를 프로세스 안에서 직접 스케줄링합니다 — `runserver`와는 별개의 독립 프로세스로 띄우면 되고, Docker 별도 서비스든 systemd든 `nohup ... &`든 배포 플랫폼과 무관하게 동일하게 동작합니다. 나중에 배포 플랫폼이 자체 cron 기능을 제공하면 이 워커 대신 그걸 써도 됩니다(관리 명령어 자체는 그대로 재사용).
 
 **아직 안 한 것**: 실제 푸시 발송(FCM/APNs)은 모바일 스택이 정해져야 시작 가능. `runscheduler`가 실제 프로덕션에서 잘 도는지는 배포 이후에나 확인 가능(로컬에서 기동/정상 시작 로그까지만 확인함).
+
+### 결제/구독 (토스페이먼츠 자동결제)
+
+프리미엄(월 2,900원) 구독을 [토스페이먼츠 자동결제(빌링)](https://docs.tosspayments.com/guides/v2/billing/integration)로 연동했습니다. 카카오 로그인과 같은 원칙을 그대로 적용 — 시크릿 키가 필요한 작업(빌링키 발급, 결제 승인)은 전부 백엔드에서 하고, 프론트는 공개 키(`TOSS_CLIENT_KEY`)와 1회용 인증 코드(`authKey`)만 다룹니다.
+
+- 흐름: `PricingPage`에서 카드 등록 버튼 → 프론트가 토스 SDK로 카드 등록 결제창을 띄움(`requestBillingAuth`) → 성공 시 `authKey`와 함께 `/billing/success`로 리다이렉트 → `BillingSuccessPage`가 그 `authKey`를 백엔드 `/billing/subscribe/`에 전달 → 백엔드가 빌링키를 발급받고 즉시 첫 결제를 승인해 프리미엄으로 전환
+- 상태 모델: `Subscription.Plan`(FREE/PREMIUM) × `Subscription.Status`(ACTIVE/CANCELED) 조합만으로 충분 — 별도 EXPIRED 상태 없음. 해지해도 이미 낸 결제 주기(`current_period_end`)까지는 프리미엄 유지, 갱신 결제 실패 시 카드 정보(`billing_key`)는 남겨두고 바로 무료로 전환(재구독 시 카드 재등록 불필요)
+- 토스 API 호출은 느린 외부 요청이라 DB 트랜잭션으로 감싸지 않고, 각 단계(빌링키 저장, 결제 기록)를 작은 단위로 바로 커밋 — 자세한 이유는 `apps/billing/services/subscription.py` 모듈 docstring 참고
+- 매일 갱신 청구는 위 "알림 생성/토큰 정리/구독 갱신 스케줄러"의 `renew_subscriptions`가 처리
+
+**API 키 관련 삽질**: 토스 개발자센터 API 키 화면에 "결제위젯 연동 키"(`test_gck_...`)와 "API 개별 연동 키"(`test_ck_...`) 두 종류가 있는데, 자동결제(빌링) API는 후자만 지원합니다. 처음 문서 예제 키(`test_gck_docs_...`, 위젯용)로 시도했다가 `TossPayments()` SDK가 명확한 에러 메시지로 알려줘서 바로 잡았습니다. 카드 등록 테스트 시 카드번호는 실제 존재하는 BIN(앞 6~8자리)이어야 통과합니다 — 임의의 번호(`4330-0000-...`)는 `NOT_SUPPORTED_CARD_TYPE`로 거절되고, 실제 카드사 BIN(예: 현대카드 `9490-1907`)을 쓰면 통과합니다.
+
+**아직 안 한 것**: 실제 서비스에 적용할 운영(live) 키는 사업자 등록 심사가 필요해서 미발급 — 지금은 테스트 키로만 검증. 배포 확정 시 운영 키로 교체 필요.
 
 ### 프론트엔드 — 백엔드 API 연동 사실상 전 영역 완료
 
@@ -88,24 +105,23 @@ Vite+React+TS, 라우팅(`react-router-dom`), TanStack Query(서버 상태), Rea
 - **Stats** — 월별 결제 금액/유형별/상태별 Recharts 차트(`GET /items/stats/`) — 색상은 `dataviz` 스킬 절차 그대로 따르고 검증함
 - **Notifications** — 전체/읽지 않음 필터, 개별·전체 읽음 처리(`GET /notifications/`, `POST .../read/`, `POST read-all/`)
 - **Settings** — 프로필 수정, 비밀번호 변경, 알림(푸시) 설정 토글, 회원 탈퇴
-- **아직 없는 것**: `PricingPage`는 자리표시자(결제 연동 자체가 백엔드에 없음 — 남은 작업 참고)
+- **결제/구독(Pricing)** — 무료/프리미엄 비교, 카드 등록(토스 결제창)/해지/결제 내역 전부 연결. 실제 테스트 계정으로 카드 등록 → 결제 → 프리미엄 전환까지 검증 완료
 
 ## 남은 작업
 
 우선순위 순서 제안:
 
-1. **결제/구독** — 어떤 PG사(토스페이먼츠/아임포트-포트원 등)를 쓸지부터 결정 필요. 프리미엄 플랜(월 2,900원 기획가) 결제 연동, 백엔드에 관련 모델/API 전혀 없음, `PricingPage`도 자리표시자, 처음부터 시작
-2. **이메일 발송** — 어떤 SMTP/이메일 서비스(SendGrid, AWS SES 등)를 쓸지부터 결정 필요. 현재 콘솔 백엔드(개발용)
-3. **모바일 앱** — 스택 자체가 미정
-4. **배포 인프라** — 프로덕션 서버/DB 호스팅 미정. `.envs/.env.prod`는 현재 로컬 Postgres를 가리키고 있어 실제 배포 시 값 교체 필요. 배포 확정 시 rate limiting용 캐시를 Redis 등 공유 캐시로 교체하고, refresh 쿠키 `Secure` 속성이 실제로 켜지는지 확인 필요(위 "인증 보안 강화" 참고). 카카오 디벨로퍼스에도 배포 도메인을 Web 플랫폼/Redirect URI로 추가 등록해야 함. `runscheduler` 워커도 실제로 띄워야 함(위 "알림 생성/토큰 정리 스케줄러" 참고)
-5. **실제 푸시 발송(FCM/APNs)** — 모바일 스택 확정 후. 알림 생성 자체(크론 스케줄링 포함)는 이미 끝남
-6. **출시 이후로 명시적으로 미룬 것** (지금 안 해도 됨): Google 소셜 로그인, 가족 공유 기능
+1. **이메일 발송** — 어떤 SMTP/이메일 서비스(SendGrid, AWS SES 등)를 쓸지부터 결정 필요. 현재 콘솔 백엔드(개발용)
+2. **모바일 앱** — 스택 자체가 미정
+3. **배포 인프라** — 프로덕션 서버/DB 호스팅 미정. `.envs/.env.prod`는 현재 로컬 Postgres를 가리키고 있어 실제 배포 시 값 교체 필요. 배포 확정 시 rate limiting용 캐시를 Redis 등 공유 캐시로 교체하고, refresh 쿠키 `Secure` 속성이 실제로 켜지는지 확인 필요(위 "인증 보안 강화" 참고). 카카오 디벨로퍼스에도 배포 도메인을 Web 플랫폼/Redirect URI로 추가 등록해야 함. 토스페이먼츠도 사업자 등록 후 운영 키로 교체 필요(위 "결제/구독" 참고). `runscheduler` 워커도 실제로 띄워야 함(위 "알림 생성/토큰 정리/구독 갱신 스케줄러" 참고)
+4. **실제 푸시 발송(FCM/APNs)** — 모바일 스택 확정 후. 알림 생성 자체(크론 스케줄링 포함)는 이미 끝남
+5. **출시 이후로 명시적으로 미룬 것** (지금 안 해도 됨): Google 소셜 로그인, 가족 공유 기능
 
-카카오 로그인 포함 프론트엔드-백엔드 연동은 결제(Pricing)만 빼고 전부 끝났고, 실제 계정으로 검증까지 완료됐습니다 — 위 "완료된 것 > 프론트엔드" 참고.
+카카오 로그인·결제/구독 포함 프론트엔드-백엔드 연동은 전부 끝났고, 실제 계정/테스트 키로 검증까지 완료됐습니다 — 위 "완료된 것 > 프론트엔드" 참고.
 
 ## 다음 세션에서 이어가려면
 
 1. 위 "지금 커밋 안 된 변경사항" 섹션부터 확인하고 커밋
 2. `git log --oneline -15`로 최근 커밋 히스토리 확인, `README.md`의 "개발 현황" 체크리스트로 기획 대비 위치 확인
-3. "남은 작업"이 전부 사용자 쪽 외부 결정(PG사, 이메일 서비스, 배포 플랫폼, 모바일 스택)이 필요한 항목들뿐이라, 다음 세션 시작할 때 어느 걸 먼저 할지 사용자에게 확인부터 하는 걸 추천
-4. 로컬 실행: `backend/README.md`, `frontend/README.md`의 "로컬 개발 환경 설정" 참고 (둘 다 `.envs/.env.dev`를 로컬에 직접 만들어야 함 — git에 없음, 카카오 로그인 테스트하려면 `VITE_KAKAO_JS_KEY`/`KAKAO_REST_API_KEY`/`KAKAO_CLIENT_SECRET`도 필요)
+3. "남은 작업"이 전부 사용자 쪽 외부 결정(이메일 서비스, 배포 플랫폼, 모바일 스택)이 필요한 항목들뿐이라, 다음 세션 시작할 때 어느 걸 먼저 할지 사용자에게 확인부터 하는 걸 추천
+4. 로컬 실행: `backend/README.md`, `frontend/README.md`의 "로컬 개발 환경 설정" 참고 (둘 다 `.envs/.env.dev`를 로컬에 직접 만들어야 함 — git에 없음, 카카오 로그인 테스트하려면 `VITE_KAKAO_JS_KEY`/`KAKAO_REST_API_KEY`/`KAKAO_CLIENT_SECRET`, 결제 테스트하려면 `VITE_TOSS_CLIENT_KEY`/`TOSS_CLIENT_KEY`/`TOSS_SECRET_KEY`도 필요)
