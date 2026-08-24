@@ -1,10 +1,13 @@
 import { api } from '../../lib/api'
 
+export type SignupSource = 'email' | 'kakao' | 'google'
+
 export interface User {
   id: number
   email: string
   name: string
   is_email_verified: boolean
+  signup_source: SignupSource
   date_joined: string
 }
 
