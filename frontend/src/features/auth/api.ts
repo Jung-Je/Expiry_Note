@@ -41,6 +41,22 @@ export async function logout(): Promise<void> {
   await api.post('/auth/logout/')
 }
 
+export async function updateProfile(payload: { name: string }): Promise<User> {
+  const { data } = await api.patch<User>('/auth/me/', payload)
+  return data
+}
+
+export async function changePassword(payload: {
+  current_password: string
+  new_password: string
+}): Promise<void> {
+  await api.post('/auth/password/change/', payload)
+}
+
+export async function withdraw(): Promise<void> {
+  await api.delete('/auth/me/')
+}
+
 export async function requestPasswordReset(email: string): Promise<void> {
   await api.post('/auth/password/reset/', { email })
 }
