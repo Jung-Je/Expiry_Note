@@ -131,7 +131,7 @@ def test_logout_blacklists_the_cookie_refresh_token(user):
 
 @pytest.mark.django_db
 def test_kakao_login_sets_refresh_cookie_and_omits_it_from_body():
-    fake_response = {
+    fake_profile = {
         "id": 999999,
         "kakao_account": {
             "email": "kakao-cookie@example.com",
@@ -139,11 +139,19 @@ def test_kakao_login_sets_refresh_cookie_and_omits_it_from_body():
         },
     }
     client = APIClient()
-    with patch("apps.accounts.services.kakao.requests.get") as mock_get:
+    with (
+        patch("apps.accounts.services.kakao.requests.post") as mock_post,
+        patch("apps.accounts.services.kakao.requests.get") as mock_get,
+    ):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {"access_token": "fake-kakao-access-token"}
         mock_get.return_value.status_code = 200
-        mock_get.return_value.json.return_value = fake_response
+        mock_get.return_value.json.return_value = fake_profile
 
-        response = client.post("/api/v1/auth/kakao/login/", {"access_token": "fake-token"})
+        response = client.post(
+            "/api/v1/auth/kakao/login/",
+            {"code": "fake-code", "redirect_uri": "http://localhost:5173/auth/kakao/callback"},
+        )
 
     assert response.status_code == 200
     assert "access" in response.data
