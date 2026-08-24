@@ -68,4 +68,6 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class LogoutSerializer(serializers.Serializer):
-    refresh = serializers.CharField()
+    # 바디에 refresh가 안 오면(쿠키 기반 플로우) 쿠키 값을 대신 쓴다
+    # (views/auth.py의 LogoutView 참고).
+    refresh = serializers.CharField(required=False)
