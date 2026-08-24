@@ -10,6 +10,7 @@ import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage'
 import { LoginPage } from './pages/auth/LoginPage'
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage'
 import { VerifyEmailPage } from './pages/auth/VerifyEmailPage'
+import { NotificationsPage } from './pages/NotificationsPage'
 import { PricingPage } from './pages/PricingPage'
 import { SchedulePage } from './pages/SchedulePage'
 import { SettingsPage } from './pages/SettingsPage'
@@ -38,6 +39,7 @@ export default function App() {
                 <Route path="/items/:id" element={<ItemDetailPage />} />
                 <Route path="/items/:id/edit" element={<ItemFormPage />} />
                 <Route path="/stats" element={<StatsPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
               </Route>
