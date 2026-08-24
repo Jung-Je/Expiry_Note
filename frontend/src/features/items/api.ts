@@ -33,6 +33,31 @@ export interface ListItemsParams {
   date?: string
 }
 
+export interface CategoryStat {
+  category: ItemCategory
+  label: string
+  count: number
+}
+
+export interface StatusStat {
+  status: ItemStatus
+  label: string
+  count: number
+}
+
+export interface MonthlyAmount {
+  month: string
+  total_amount: number
+}
+
+export interface ItemStats {
+  total_count: number
+  expiring_soon_count: number
+  by_category: CategoryStat[]
+  by_status: StatusStat[]
+  monthly_amounts: MonthlyAmount[]
+}
+
 export async function listItems(params?: ListItemsParams): Promise<ExpiryItem[]> {
   const { data } = await api.get<ExpiryItem[]>('/items/', { params })
   return data
@@ -58,4 +83,9 @@ export async function updateItem(
 
 export async function deleteItem(id: number | string): Promise<void> {
   await api.delete(`/items/${id}/`)
+}
+
+export async function getItemStats(): Promise<ItemStats> {
+  const { data } = await api.get<ItemStats>('/items/stats/')
+  return data
 }
