@@ -42,6 +42,15 @@ Django + Django REST Framework 기반 API 서버입니다. 패키지/가상환�
    KAKAO_REST_API_KEY=<카카오 REST API 키>
    # KAKAO_CLIENT_SECRET=<카카오 클라이언트 시크릿, 켜져 있는 경우만>
 
+   # 프리미엄 구독 결제(토스페이먼츠 자동결제/빌링). 개발자센터 > 내
+   # 개발자센터 > API 키에서 "API 개별 연동 키"의 클라이언트/시크릿 키를
+   # 쓴다 — "결제위젯 연동 키"는 자동결제 API를 지원하지 않으니 주의.
+   # TOSS_CLIENT_KEY는 프론트 JS SDK 초기화에도 쓰이는 공개 키라 노출돼도
+   # 되지만(frontend/.envs의 VITE_TOSS_CLIENT_KEY로 별도 관리), TOSS_SECRET_KEY는
+   # 절대 프론트로 넘기면 안 되는 값이라 백엔드에만 둔다.
+   TOSS_CLIENT_KEY=<토스페이먼츠 API 개별 연동 클라이언트 키>
+   TOSS_SECRET_KEY=<토스페이먼츠 API 개별 연동 시크릿 키>
+
    # 로컬 PostgreSQL(pgAdmin4로 관리)의 expiry_note_dev 데이터베이스.
    DB_ENGINE=django.db.backends.postgresql
    DB_NAME=expiry_note_dev
@@ -101,17 +110,29 @@ uv run ruff check .                        # 린트
 uv run ruff format .                       # 포맷팅
 ```
 
-## 알림 생성/토큰 정리 스케줄러
+## 알림 생성/토큰 정리/구독 갱신 스케줄러
 
-`generate_notifications`(만료 임박 알림 생성)와 `flushexpiredtokens`(만료된 JWT 블랙리스트 정리)는 원래 cron 같은 외부 스케줄러로 주기적으로 돌리는 걸 전제로 만든 관리 명령어입니다. 배포 플랫폼이 아직 정해지지 않아 시스템 cron에 의존하는 대신, `apps/core/management/commands/runscheduler.py`가 [APScheduler](https://apscheduler.readthedocs.io/)로 이 둘을 프로세스 안에서 직접 스케줄링합니다(`generate_notifications` 매일 09:00, `flushexpiredtokens` 매주 월요일 03:00, 둘 다 `TIME_ZONE` 기준).
+`generate_notifications`(만료 임박 알림 생성), `flushexpiredtokens`(만료된 JWT 블랙리스트 정리), `renew_subscriptions`(오늘이 결제 예정일인 프리미엄 구독 갱신 청구)는 원래 cron 같은 외부 스케줄러로 주기적으로 돌리는 걸 전제로 만든 관리 명령어입니다. 배포 플랫폼이 아직 정해지지 않아 시스템 cron에 의존하는 대신, `apps/core/management/commands/runscheduler.py`가 [APScheduler](https://apscheduler.readthedocs.io/)로 이 셋을 프로세스 안에서 직접 스케줄링합니다(`renew_subscriptions` 매일 08:00, `generate_notifications` 매일 09:00, `flushexpiredtokens` 매주 월요일 03:00, 모두 `TIME_ZONE` 기준).
 
 ```bash
 uv run python manage.py runscheduler   # 웹 서버(runserver)와는 별개의 독립 프로세스로 계속 띄워둠
 ```
 
 - **`runserver`(웹 프로세스)와 완전히 별개의 프로세스로 띄워야 합니다** — Docker Compose의 별도 서비스, systemd 유닛, Heroku/Render 같은 곳의 worker 프로세스, 그냥 서버에서 `nohup uv run python manage.py runscheduler &`로 띄워도 전부 동일하게 동작합니다. 배포 플랫폼이 뭐로 정해지든 그대로 씁니다.
-- 실제로 배포할 플랫폼이 자체 cron 기능(예: k8s CronJob, 클라우드 스케줄러)을 제공한다면, 이 워커를 안 띄우고 대신 `generate_notifications`/`flushexpiredtokens`를 그 기능으로 직접 스케줄링해도 됩니다 — 관리 명령어 자체는 그대로 재사용됩니다.
+- 실제로 배포할 플랫폼이 자체 cron 기능(예: k8s CronJob, 클라우드 스케줄러)을 제공한다면, 이 워커를 안 띄우고 대신 `generate_notifications`/`flushexpiredtokens`/`renew_subscriptions`를 그 기능으로 직접 스케줄링해도 됩니다 — 관리 명령어 자체는 그대로 재사용됩니다.
 - `generate_notifications`는 여러 번 실행해도 항목+만료일 조합으로 중복 알림이 생성되지 않습니다(`Notification`의 `unique_together`).
+- `renew_subscriptions`는 매일 실행해도 오늘이 결제 예정일(`current_period_end`)인 구독만 청구합니다. 결제가 실패하면 카드 정보(`billing_key`)는 남겨두고 바로 무료 플랜으로 내립니다 — 자세한 내용은 아래 "결제/구독" 절 참고.
+
+## 결제/구독 (`apps/billing`)
+
+프리미엄(월 2,900원) 구독은 [토스페이먼츠 자동결제(빌링)](https://docs.tosspayments.com/guides/v2/billing/integration)로 처리합니다. 카드 등록 인증(`authKey` 발급)은 프론트에서 토스 SDK로 진행하고, `authKey` → 빌링키 교환과 실제 결제 승인은 시크릿 키가 필요한 작업이라 전부 백엔드(`apps/billing/services/toss.py`, `services/subscription.py`)에서 처리합니다.
+
+- `GET /api/v1/billing/subscription/` — 현재 사용자의 구독 상태(플랜/상태/다음 결제일) 조회. 구독 레코드가 없으면 무료 플랜으로 자동 생성.
+- `POST /api/v1/billing/subscribe/` — `{"auth_key": "..."}`로 빌링키를 발급받고 첫 결제를 즉시 청구해 프리미엄으로 전환.
+- `POST /api/v1/billing/cancel/` — 다음 결제부터 청구를 멈춤(해지). 이미 낸 결제 주기가 끝날 때까지는 프리미엄이 유지됩니다.
+- `GET /api/v1/billing/payments/` — 결제 내역 조회.
+
+토스페이먼츠 API 키는 개발자센터 > 내 개발자센터 > API 키의 **"API 개별 연동 키"**를 씁니다 — "결제위젯 연동 키"는 자동결제 API를 지원하지 않습니다. 환경 변수는 위 "로컬 개발 환경 설정"의 `TOSS_CLIENT_KEY`/`TOSS_SECRET_KEY` 참고.
 
 ## 커밋 전 체크
 
@@ -140,10 +161,11 @@ backend/
 │                      # .env.prod면 prod.py, 그 외엔 dev.py를 씀 (settings/__init__.py)
 ├── apps/            # 도메인별 Django 앱 모음
 │   ├── _template/    # 새 앱을 만들 때 복사해서 시작하는 템플릿
-│   ├── core/         # 헬스 체크, 알림/토큰 정리 스케줄러(runscheduler)
+│   ├── core/         # 헬스 체크, 알림/토큰 정리/구독 갱신 스케줄러(runscheduler)
 │   ├── accounts/     # 회원 인증 (이메일 가입/로그인, 카카오 로그인 등)
 │   ├── items/        # 만료 항목 관리 + 일정 + 통계
-│   └── notifications/ # 인앱 알림 + 알림 생성 배치
+│   ├── notifications/ # 인앱 알림 + 알림 생성 배치
+│   └── billing/      # 프리미엄 구독/결제 (토스페이먼츠 자동결제)
 ├── manage.py
 ├── pyproject.toml   # uv/ruff/pytest 설정
 └── .envs/           # git에 커밋되지 않음 — 필요한 키는 이 README에 문서화
