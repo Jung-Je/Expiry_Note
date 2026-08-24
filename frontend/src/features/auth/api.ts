@@ -10,7 +10,6 @@ export interface User {
 
 export interface AuthResponse {
   access: string
-  refresh: string
   user: User
 }
 
@@ -34,6 +33,12 @@ export async function login(email: string, password: string): Promise<AuthRespon
 export async function fetchMe(): Promise<User> {
   const { data } = await api.get<User>('/auth/me/')
   return data
+}
+
+export async function logout(): Promise<void> {
+  // refresh token은 httpOnly 쿠키로만 있어서 body 없이 호출한다 — 백엔드가
+  // 쿠키에서 읽어 블랙리스트 처리하고, 응답으로 쿠키도 지워준다.
+  await api.post('/auth/logout/')
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {
