@@ -41,7 +41,7 @@ def test_run_command_closes_old_db_connections_after_running():
     mock_close.assert_called_once()
 
 
-def test_runscheduler_registers_generate_notifications_and_flushexpiredtokens_jobs():
+def test_runscheduler_registers_all_three_jobs():
     with patch(
         "apps.core.management.commands.runscheduler.BlockingScheduler"
     ) as mock_scheduler_cls:
@@ -54,5 +54,5 @@ def test_runscheduler_registers_generate_notifications_and_flushexpiredtokens_jo
         call_command("runscheduler")
 
     job_ids = {call.kwargs["id"] for call in mock_scheduler.add_job.call_args_list}
-    assert job_ids == {"generate_notifications", "flushexpiredtokens"}
+    assert job_ids == {"renew_subscriptions", "generate_notifications", "flushexpiredtokens"}
     mock_scheduler.start.assert_called_once()

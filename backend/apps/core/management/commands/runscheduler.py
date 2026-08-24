@@ -1,12 +1,14 @@
-"""배포 플랫폼과 무관하게 알림 생성/토큰 정리를 주기적으로 실행하는 워커.
+"""배포 플랫폼과 무관하게 알림 생성/토큰 정리/구독 갱신을 주기적으로
+실행하는 워커.
 
 manage.py runserver(웹 프로세스)와는 별개로, 이 커맨드 하나를 독립된
 장기 실행 프로세스로 띄우면 된다 — Docker의 별도 서비스, systemd 유닛,
 Heroku/Render 같은 곳의 worker 프로세스, 그냥 서버에서 `nohup ... &`로
 띄워도 전부 동일하게 동작한다. 시스템 cron에 기능이 얽매이지 않아 배포
 플랫폼이 뭐로 정해지든 그대로 쓸 수 있다(플랫폼이 자체 cron 기능을
-제공하면 대신 `generate_notifications`/`flushexpiredtokens`를 직접
-스케줄링해도 되고, 이 워커를 안 띄워도 무방하다).
+제공하면 대신 `generate_notifications`/`flushexpiredtokens`/
+`renew_subscriptions`를 직접 스케줄링해도 되고, 이 워커를 안 띄워도
+무방하다).
 """
 
 import logging
@@ -38,12 +40,23 @@ def _run_command(name: str) -> None:
 
 class Command(BaseCommand):
     help = (
-        "generate_notifications/flushexpiredtokens을 주기적으로 실행하는 "
-        "독립 워커 프로세스를 시작한다(Ctrl+C로 종료)."
+        "generate_notifications/flushexpiredtokens/renew_subscriptions을 "
+        "주기적으로 실행하는 독립 워커 프로세스를 시작한다(Ctrl+C로 종료)."
     )
 
     def handle(self, *args, **options):
         scheduler = BlockingScheduler(timezone=settings.TIME_ZONE)
+
+        # 매일 오전 8시 — 오늘이 결제 예정일인 프리미엄 구독을 갱신 청구한다.
+        # generate_notifications보다 먼저 돌려서, 결제 실패로 무료 전환된
+        # 상태가 그날의 알림 생성에도 반영되게 한다.
+        scheduler.add_job(
+            _run_command,
+            args=["renew_subscriptions"],
+            trigger=CronTrigger(hour=8, minute=0),
+            id="renew_subscriptions",
+            misfire_grace_time=3600,
+        )
 
         # 매일 오전 9시 — 오늘이 만료 D-day(notify_days_before)인 항목의
         # 인앱 알림을 생성한다. 여러 번 실행해도 항목+만료일 조합으로는
@@ -68,6 +81,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"스케줄러 시작 (timezone={settings.TIME_ZONE}) — "
+                "renew_subscriptions 매일 08:00, "
                 "generate_notifications 매일 09:00, "
                 "flushexpiredtokens 매주 월요일 03:00. Ctrl+C로 종료."
             )
