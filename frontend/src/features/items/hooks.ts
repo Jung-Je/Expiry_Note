@@ -16,6 +16,13 @@ export function useItemStatsQuery() {
   })
 }
 
+export function useMonthlyCalendarQuery(year: number, month: number) {
+  return useQuery({
+    queryKey: ['items', 'calendar', year, month],
+    queryFn: () => itemsApi.getMonthlyCalendar({ year, month }),
+  })
+}
+
 export function useItemQuery(id: string | number | undefined) {
   return useQuery({
     queryKey: ['items', 'detail', id],
