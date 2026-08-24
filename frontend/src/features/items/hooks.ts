@@ -9,6 +9,13 @@ export function useItemsQuery(params?: ListItemsParams) {
   })
 }
 
+export function useItemStatsQuery() {
+  return useQuery({
+    queryKey: ['items', 'stats'],
+    queryFn: () => itemsApi.getItemStats(),
+  })
+}
+
 export function useItemQuery(id: string | number | undefined) {
   return useQuery({
     queryKey: ['items', 'detail', id],
