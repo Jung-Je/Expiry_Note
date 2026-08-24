@@ -8,6 +8,7 @@ from apps.accounts.views.auth import (
     PasswordResetConfirmView,
     PasswordResetRequestView,
     SignupView,
+    TokenRefreshView,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "PasswordResetConfirmView",
     "PasswordResetRequestView",
     "SignupView",
+    "TokenRefreshView",
 ]
