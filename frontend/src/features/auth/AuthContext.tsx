@@ -28,6 +28,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user)
   }
 
+  async function loginWithKakao(code: string, redirectUri: string) {
+    const data = await authApi.kakaoLogin({ code, redirect_uri: redirectUri })
+    setAccessToken(data.access)
+    setUser(data.user)
+  }
+
   async function signup(payload: SignupPayload) {
     // 이메일 인증 전까지는 자동 로그인시키지 않고, 로그인 페이지로 안내한다.
     return authApi.signup(payload)
@@ -50,7 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, logout, setUser, clearSession }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, login, loginWithKakao, signup, logout, setUser, clearSession }}
+    >
       {children}
     </AuthContext.Provider>
   )
