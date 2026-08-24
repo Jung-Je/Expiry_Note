@@ -35,6 +35,14 @@ export async function fetchMe(): Promise<User> {
   return data
 }
 
+export async function kakaoLogin(payload: {
+  code: string
+  redirect_uri: string
+}): Promise<AuthResponse> {
+  const { data } = await api.post<AuthResponse>('/auth/kakao/login/', payload)
+  return data
+}
+
 export async function logout(): Promise<void> {
   // refresh token은 httpOnly 쿠키로만 있어서 body 없이 호출한다 — 백엔드가
   // 쿠키에서 읽어 블랙리스트 처리하고, 응답으로 쿠키도 지워준다.
