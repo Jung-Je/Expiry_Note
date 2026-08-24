@@ -209,6 +209,15 @@ SIMPLE_JWT = {
 }
 
 
+# Kakao login
+# 인가 코드 -> access_token 교환은 반드시 백엔드에서 한다(apps/accounts/
+# services/kakao.py) — REST API 키와 client_secret은 프론트(브라우저)로
+# 절대 넘기면 안 되는 값이라서다. client_secret은 카카오 앱에서 "클라이언트
+# 시크릿" 기능을 켰을 때만 필요 — 꺼져 있으면 빈 값으로 둬도 된다.
+KAKAO_REST_API_KEY = env("KAKAO_REST_API_KEY", default="")
+KAKAO_CLIENT_SECRET = env("KAKAO_CLIENT_SECRET", default="")
+
+
 # Refresh token cookie
 # refresh token은 프론트 JS가 아예 접근할 수 없는 httpOnly 쿠키로만 오간다
 # (access token만 응답 바디로 내려주고 프론트가 메모리에 들고 있음) — XSS로
