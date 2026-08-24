@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { useAuth } from '../../features/auth/useAuth'
 
@@ -15,6 +15,8 @@ type FormValues = z.infer<typeof schema>
 export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const redirectMessage = (location.state as { message?: string } | null)?.message
   const [serverError, setServerError] = useState<string | null>(null)
   const {
     register,
@@ -39,6 +41,8 @@ export function LoginPage() {
         <p className="mt-1 text-sm text-slate-500">만료노트에 로그인하세요.</p>
       </div>
 
+      {redirectMessage && <p className="text-sm text-emerald-600">{redirectMessage}</p>}
+
       <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-slate-700" htmlFor="email">
@@ -55,9 +59,14 @@ export function LoginPage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-700" htmlFor="password">
-            비밀번호
-          </label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-slate-700" htmlFor="password">
+              비밀번호
+            </label>
+            <Link className="text-xs font-medium text-indigo-600" to="/forgot-password">
+              비밀번호를 잊으셨나요?
+            </Link>
+          </div>
           <input
             id="password"
             type="password"
