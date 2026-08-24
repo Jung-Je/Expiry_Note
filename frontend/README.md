@@ -37,9 +37,15 @@ Vite + React + TypeScript 기반 SPA입니다. 백엔드(Django + DRF)와는 완
    # (http://localhost:5173)을 "Web 플랫폼 사이트 도메인"으로, 아래 콜백
    # 경로를 "카카오 로그인 > Redirect URI"로도 등록해둬야 로컬에서 동작한다.
    VITE_KAKAO_JS_KEY=<카카오 JavaScript 키>
+
+   # 프리미엄 구독 결제(토스페이먼츠 자동결제)용 클라이언트 키. 개발자센터
+   # > 내 개발자센터 > API 키의 "API 개별 연동 키" 클라이언트 키를 쓴다 —
+   # "결제위젯 연동 키"는 자동결제 API를 지원하지 않으니 주의. 시크릿
+   # 키는 절대 여기 넣지 않는다(백엔드 backend/.envs/.env.dev 전용).
+   VITE_TOSS_CLIENT_KEY=<토스페이먼츠 API 개별 연동 클라이언트 키>
    ```
 
-   `VITE_API_BASE_URL`이 실행 중인 백엔드 주소를 가리키는지 확인하세요. 카카오 로그인 버튼을 안 쓸 거면 `VITE_KAKAO_JS_KEY`는 비워둬도 되지만, 그 경우 로그인 화면의 "카카오로 로그인" 버튼은 에러를 띄웁니다.
+   `VITE_API_BASE_URL`이 실행 중인 백엔드 주소를 가리키는지 확인하세요. 카카오 로그인 버튼을 안 쓸 거면 `VITE_KAKAO_JS_KEY`는, 요금제 페이지의 구독 버튼을 안 쓸 거면 `VITE_TOSS_CLIENT_KEY`는 비워둬도 되지만, 그 경우 해당 버튼은 에러를 띄웁니다.
 
 4. 개발 서버 실행
 
@@ -84,9 +90,13 @@ src/
 │   │   ├── constants.ts          # 카테고리/상태 라벨·배지 스타일
 │   │   ├── format.ts             # 금액/D-day 포맷
 │   │   └── hooks.ts
-│   └── notifications/          # 인앱 알림·알림 설정 API/훅
+│   ├── notifications/          # 인앱 알림·알림 설정 API/훅
+│   │   ├── api.ts
+│   │   └── hooks.ts
+│   └── billing/                # 구독/결제(토스페이먼츠 자동결제) API/훅
 │       ├── api.ts
-│       └── hooks.ts
+│       ├── hooks.ts
+│       └── toss.ts               # 토스 SDK 로드 + requestBillingAuth() 트리거
 ├── components/
 │   └── layout/
 │       └── AppLayout.tsx      # 로그인 후 공통 사이드바 셸
@@ -105,10 +115,13 @@ src/
     ├── StatsPage.tsx
     ├── NotificationsPage.tsx
     ├── SettingsPage.tsx
-    └── PricingPage.tsx
+    ├── PricingPage.tsx
+    └── billing/
+        ├── BillingSuccessPage.tsx    # 토스 카드 등록 성공 콜백(/billing/success)
+        └── BillingFailPage.tsx       # 토스 카드 등록 실패 콜백(/billing/fail)
 ```
 
-로그인/회원가입/비밀번호 재설정/이메일 인증/카카오 로그인, 항목 CRUD, 대시보드, 일정, 통계, 알림, 설정 화면이 전부 백엔드 API와 연결돼 있습니다. `PricingPage`만 아직 자리표시자입니다(결제 연동 전이라 백엔드에 API 자체가 없음).
+로그인/회원가입/비밀번호 재설정/이메일 인증/카카오 로그인, 항목 CRUD, 대시보드, 일정, 통계, 알림, 설정, 요금제/구독 화면이 전부 백엔드 API와 연결돼 있습니다.
 
 ## 인증 방식
 
@@ -119,3 +132,7 @@ src/
 - access token 만료(401) 시 `lib/api.ts`의 axios 인터셉터가 `refreshAccessToken()`으로 자동 재발급 후 원래 요청을 재시도합니다. 이 함수는 `AuthProvider`의 초기 로드 시에도 재사용됩니다.
 - 로그아웃(`features/auth/api.ts`의 `logout()`)은 백엔드 `/auth/logout/`을 호출해 refresh token을 블랙리스트 처리하고 쿠키를 지웁니다 — 클라이언트 쪽에서 httpOnly 쿠키를 직접 지울 방법이 없으므로 반드시 서버 응답을 거쳐야 합니다.
 - **카카오 로그인**은 `features/auth/kakao.ts`가 카카오 JS SDK를 동적으로 로드하고 `Kakao.Auth.authorize()`로 카카오 동의 화면으로 리다이렉트합니다. 카카오가 `/auth/kakao/callback?code=...`로 되돌려주면 `KakaoCallbackPage`가 그 인가 코드를 백엔드 `/auth/kakao/login/`에 그대로 전달합니다 — **access_token 교환은 프론트가 하지 않습니다.** client_secret이 필요할 수 있는 값이라 반드시 백엔드에서 처리해야 하기 때문입니다(`backend/apps/accounts/services/kakao.py`). `VITE_KAKAO_JS_KEY`가 없으면 로그인 버튼이 에러를 띄웁니다.
+
+## 구독/결제
+
+`PricingPage`의 "카드 등록하고 시작하기"는 `features/billing/toss.ts`가 토스페이먼츠 SDK를 동적으로 로드하고 `payment.requestBillingAuth()`로 카드 등록 결제창을 띄웁니다. 성공하면 `/billing/success?authKey=...`로, 실패/취소하면 `/billing/fail?code=...&message=...`로 되돌아옵니다. `BillingSuccessPage`가 그 `authKey`를 백엔드 `/billing/subscribe/`에 그대로 전달합니다 — **빌링키 교환과 결제 승인은 프론트가 하지 않습니다.** 시크릿 키가 필요한 작업이라 반드시 백엔드에서 처리해야 하기 때문입니다(`backend/apps/billing/services/toss.py`). `VITE_TOSS_CLIENT_KEY`가 없으면 구독 버튼이 에러를 띄웁니다.
