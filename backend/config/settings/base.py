@@ -188,6 +188,7 @@ REST_FRAMEWORK = {
         "auth-password-reset-confirm": "10/hour",
         "auth-email-verify": "10/hour",
         "auth-password-change": "20/hour",
+        "auth-token-refresh": "30/min",
     },
 }
 
@@ -208,6 +209,21 @@ SIMPLE_JWT = {
 }
 
 
+# Refresh token cookie
+# refresh token은 프론트 JS가 아예 접근할 수 없는 httpOnly 쿠키로만 오간다
+# (access token만 응답 바디로 내려주고 프론트가 메모리에 들고 있음) — XSS로
+# access token이 새더라도 훨씬 수명이 긴 refresh token까지 같이 새지 않게
+# 하기 위함. 실제로 쿠키를 심고/지우는 코드는 apps/accounts/cookies.py.
+JWT_REFRESH_COOKIE_NAME = "refresh_token"
+# /api/v1/auth/ 아래 요청에만 브라우저가 이 쿠키를 실어 보내도록 범위를 좁힌다.
+JWT_REFRESH_COOKIE_PATH = "/api/v1/auth/"
+JWT_REFRESH_COOKIE_SAMESITE = "Lax"
+# 로컬 dev(http://localhost)에서는 Secure 쿠키가 아예 저장되지 않으므로 꺼두고,
+# DEBUG=False인 환경(배포 준하는 로컬 테스트 포함)에서는 기본으로 켠다.
+# 필요하면 JWT_REFRESH_COOKIE_SECURE로 직접 덮어쓸 수 있다.
+JWT_REFRESH_COOKIE_SECURE = env.bool("JWT_REFRESH_COOKIE_SECURE", default=not DEBUG)
+
+
 # CORS
 # https://github.com/adamchainz/django-cors-headers
 # The web frontend (Vite dev server) runs on a different origin.
@@ -216,6 +232,10 @@ CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS",
     default=["http://localhost:5173"],
 )
+# refresh token을 httpOnly 쿠키로 주고받으려면 브라우저가 크로스오리진
+# 요청에도 쿠키를 실어 보내야 한다 — CORS_ALLOWED_ORIGINS가 와일드카드가
+# 아니라 명시적 목록이라 True로 켜도 안전하다.
+CORS_ALLOW_CREDENTIALS = True
 
 
 # Email
