@@ -6,21 +6,23 @@
 
 ## 지금 커밋 안 된 변경사항부터 처리하세요
 
-refresh token을 `localStorage`에서 httpOnly 쿠키로 옮기는 작업이 아직 커밋 전입니다 (배경은 아래 "완료된 것 > 인증 보안 강화" 참고). 이전 커밋(JWT 서명키 분리, rate limiting, 세션 무효화)은 이미 파일별로 커밋됐습니다.
+카카오 로그인 프론트/백엔드 구현이 아직 커밋 전입니다. 이전 커밋들(쿠키 전환, 항목 CRUD, Dashboard/Schedule/Stats/Settings, 비밀번호 재설정/이메일 인증 화면, 인앱 알림)은 이미 파일별로 커밋됐습니다.
 
-- `backend/apps/accounts/cookies.py` (신규) — 쿠키를 심고/지우는 `set_refresh_cookie()`/`clear_refresh_cookie()`
-- `backend/apps/accounts/serializers/token.py` — 쿠키에서 refresh를 읽는 `CookieTokenRefreshSerializer` 추가
-- `backend/apps/accounts/serializers/auth.py` — `LogoutSerializer.refresh`를 선택 필드로 변경(쿠키 기반 로그아웃 지원)
-- `backend/apps/accounts/views/auth.py` — `LoginView`/`KakaoLoginView`가 refresh를 바디 대신 쿠키로 내려줌, simplejwt `TokenRefreshView`를 감싸는 자체 `TokenRefreshView` 추가(쿠키 읽기+재로테이션), `LogoutView`가 쿠키도 같이 지움
-- `backend/apps/accounts/urls.py`, `views/__init__.py`, `serializers/__init__.py` — 위 변경 반영
-- `backend/config/settings/base.py` — `JWT_REFRESH_COOKIE_*` 설정, `CORS_ALLOW_CREDENTIALS=True`, `auth-token-refresh` rate 추가
-- `frontend/src/features/auth/tokenStorage.ts` — localStorage 대신 메모리 변수로 access token만 보관(refresh는 아예 안 다룸)
-- `frontend/src/lib/api.ts` — `withCredentials: true`, `refreshAccessToken()`으로 쿠키 기반 재발급
-- `frontend/src/features/auth/{AuthContext.tsx,api.ts,context.ts}` — 마운트 시 쿠키로 조용히 재로그인 시도, `logout()`이 실제로 백엔드 `/auth/logout/`을 호출하도록 수정(이전엔 클라이언트에서 토큰만 지우고 서버에 알리지 않아 refresh token이 최대 14일 계속 살아있던 문제가 있었음)
-- 테스트: `backend/apps/accounts/tests/test_cookie_auth.py`(신규) 7개, `frontend/src/features/auth/tokenStorage.test.ts` 갱신
-- 문서: `backend/README.md`, `frontend/README.md`의 인증 관련 설명을 쿠키 기반으로 갱신
+- **`backend/apps/accounts/services/kakao.py`** — `exchange_kakao_code()` 추가: 인가 코드(code)를 access_token으로 교환. REST API 키를 `client_id`로 쓰고, `KAKAO_CLIENT_SECRET`이 설정된 경우에만 `client_secret`을 실어 보냄
+- **`backend/apps/accounts/serializers/auth.py`** — `KakaoLoginSerializer`가 `access_token` 대신 `code`/`redirect_uri`를 받도록 변경
+- **`backend/apps/accounts/views/auth.py`** — `KakaoLoginView`가 코드 교환 → 유저 조회/생성을 이어서 처리
+- **`backend/config/settings/base.py`** — `KAKAO_REST_API_KEY`/`KAKAO_CLIENT_SECRET` env var 추가
+- **`frontend/src/features/auth/kakao.ts`** (신규) — 카카오 JS SDK 동적 로드 + `Kakao.Auth.authorize()`로 리다이렉트
+- **`frontend/src/pages/auth/KakaoCallbackPage.tsx`** (신규) — `/auth/kakao/callback`에서 인가 코드를 받아 백엔드로 전달만 함(access_token 교환은 절대 프론트에서 안 함 — client_secret이 필요할 수 있는 값이라서)
+- **`frontend/src/features/auth/{AuthContext.tsx,api.ts,context.ts}`** — `loginWithKakao()` 추가
+- **`frontend/src/pages/auth/LoginPage.tsx`** — "카카오로 로그인" 버튼(카카오 브랜드 컬러) 추가
+- **`frontend/src/App.tsx`** — `/auth/kakao/callback` 라우트 등록
+- 테스트: `backend/apps/accounts/tests/test_auth_flows.py`에 `exchange_kakao_code` 성공/실패/client_secret 케이스 3개, `test_cookie_auth.py`의 카카오 로그인 테스트를 새 계약(`code`/`redirect_uri`)에 맞게 갱신
+- 문서: `backend/README.md`(`KAKAO_REST_API_KEY`/`KAKAO_CLIENT_SECRET` env var, 엔드포인트 설명), `frontend/README.md`(`VITE_KAKAO_JS_KEY`, 프로젝트 구조·인증 방식 전반을 최신 상태로 갱신 — 그동안 밀려있던 부분도 같이 정리함)
 
-백엔드 테스트 74개(기존 67 + 신규 7)·`check-all.sh`·프론트 테스트 3개·타입체크 확인 완료. 커밋만 하면 됩니다.
+백엔드 테스트 78개(기존 74 + 신규 4)·`check-all.sh`·프론트 테스트 3개·타입체크 확인 완료. **실제 카카오 계정으로 로그인 끝까지 검증 완료** — 리다이렉트 → 인가 코드 → 토큰 교환(`client_secret` 포함) → 유저 생성/로그인 → 대시보드 진입까지 실제로 동작하는 것 확인함. 커밋만 하면 됩니다.
+
+카카오 개발자 콘솔에서 클라이언트 시크릿이 켜져 있어서 처음엔 `KOE010`(Bad client credentials) 에러가 났었음 — `KAKAO_CLIENT_SECRET`을 로컬 `.envs/.env.dev`에 넣고 나서 정상 동작함. **콘솔에 "카카오 로그인 코드"와 "비즈니스 인증 코드" 두 가지가 있었는데, "카카오 로그인" 쪽이 우리가 필요한 Client Secret이 맞았음.**
 
 ```bash
 bash scripts/check-all.sh   # 백엔드 포맷팅+린트+Django check, 프론트 린트까지 한 번에
@@ -46,7 +48,7 @@ cd frontend && npm run test # 프론트 테스트
 - **`apps/accounts`** — 회원 인증 전체
   - 이메일 회원가입/로그인/토큰 재발급/로그아웃(refresh 토큰 블랙리스트)
   - 이메일 인증, 비밀번호 재설정(이메일 토큰), 로그인 상태 비밀번호 변경
-  - 카카오 로그인 (`kakao/login/` — 프론트가 카카오 JS SDK로 받은 access_token을 그대로 전달)
+  - 카카오 로그인 (`kakao/login/` — 프론트가 카카오 JS SDK로 받은 인가 코드(`code`)를 전달하면 백엔드가 access_token으로 교환)
   - 프로필 조회/수정(`me/` GET/PATCH), 회원 탈퇴(`me/` DELETE — 연관 항목/알림 cascade 삭제)
 - **`apps/items`** — 만료 항목 관리 + 일정 + 통계
   - 등록/목록/상세/수정/삭제, `category`/`status`/`search`/`date` 쿼리 파라미터로 필터링
@@ -60,7 +62,7 @@ cd frontend && npm run test # 프론트 테스트
   - `generate_due_notifications()` 서비스 + `manage.py generate_notifications` 관리 명령어 — 매일 1회 크론으로 돌리는 걸 전제. **실제 크론/스케줄러는 아직 안 걸려있음**
 - **`apps/core`** — 헬스체크(`health/`)만
 
-백엔드 테스트 74개, 커버리지 90%대.
+백엔드 테스트 78개, 커버리지 90%대.
 
 ### 인증 보안 강화 (JWT 토큰 관리)
 
@@ -77,37 +79,35 @@ cd frontend && npm run test # 프론트 테스트
 - 로컬 dev 캐시가 프로세스 로컬 LocMemCache라, 배포 시 멀티 워커 환경에서는 rate limit 카운트가 워커마다 따로 쌓여 느슨해짐 — Redis 등 공유 캐시로 교체 필요 (배포 인프라 확정 후)
 - refresh 쿠키의 `Secure` 속성은 `DEBUG`의 반대값이 기본이라 로컬 dev(http)에서는 꺼져 있음 — 실제 배포(HTTPS) 시 `JWT_REFRESH_COOKIE_SECURE`가 켜지는지 확인 필요(자동으로 켜지긴 하지만, prod.py의 HTTPS 하드닝 TODO와 같이 점검)
 
-### 프론트엔드
+### 프론트엔드 — 백엔드 API 연동 사실상 전 영역 완료
 
-- Vite+React+TS 스캐폴드, 라우팅(`react-router-dom`), 인증 컨텍스트(`AuthContext`), axios 인스턴스(401 시 자동 refresh)
-- **실제로 API에 연결된 것**: 로그인(`LoginPage`), 회원가입(`SignupPage`), 로그아웃(`AppLayout`의 로그아웃 버튼 → `POST /auth/logout/`)
-- **API 함수는 있지만 화면(라우트)이 없는 것**: 비밀번호 재설정 요청/확인, 이메일 인증 (`features/auth/api.ts`에 `requestPasswordReset`/`confirmPasswordReset`/`verifyEmail` 함수는 있음)
-- **아예 없는 것**: 카카오 로그인 연동, 비밀번호 변경 화면, 회원 탈퇴 화면
-- **자리표시자(placeholder)뿐인 화면**: Dashboard, Schedule, ItemForm, ItemDetail, Stats, Settings, Pricing — 전부 "~가 표시될 예정입니다" 문구만 있고 백엔드 API 연결 없음
+Vite+React+TS, 라우팅(`react-router-dom`), TanStack Query(서버 상태), React Hook Form+Zod(폼), Recharts(차트), date-fns(달력). 인증 컨텍스트(`AuthContext`)와 axios 인스턴스(`lib/api.ts`, 401 시 자동 refresh)를 기반으로 화면마다 `features/<domain>/{api.ts,hooks.ts}` 얇은 레이어를 두는 패턴을 씀.
+
+- **인증** — 로그인/회원가입/로그아웃/비밀번호 재설정(요청+확인)/이메일 인증/카카오 로그인까지 전부 연결. 비밀번호 변경·프로필 수정·회원 탈퇴는 설정 화면에 있음. 카카오 로그인은 실제 계정으로 끝까지(리다이렉트 → 코드 → 토큰 교환 → 유저 생성 → 대시보드 진입) 검증 완료
+- **항목(items)** — 등록/수정(`ItemFormPage`, 폼 하나로 겸용)/상세/삭제(`ItemDetailPage`) 전부 연결
+- **Dashboard** — 등록 항목 수·임박 요약 카드 + 임박 항목 목록(`GET /items/stats/`, `GET /items/?status=urgent`)
+- **Schedule** — 월별 달력, 날짜별 항목 표시, 월 이동(`GET /items/calendar/`)
+- **Stats** — 월별 결제 금액/유형별/상태별 Recharts 차트(`GET /items/stats/`) — 색상은 `dataviz` 스킬 절차 그대로 따르고 검증함
+- **Notifications** — 전체/읽지 않음 필터, 개별·전체 읽음 처리(`GET /notifications/`, `POST .../read/`, `POST read-all/`)
+- **Settings** — 프로필 수정, 비밀번호 변경, 알림(푸시) 설정 토글, 회원 탈퇴
+- **아직 없는 것**: `PricingPage`는 자리표시자(결제 연동 자체가 백엔드에 없음 — 남은 작업 참고)
 
 ## 남은 작업
 
 우선순위 순서 제안:
 
-1. **프론트엔드-백엔드 연동** (다음 작업으로 가장 유력)
-   - Dashboard: `GET /items/stats/`, `GET /items/?status=urgent` 등으로 요약/임박 항목 표시
-   - ItemForm/ItemDetail: `apps/items` CRUD 연결 (등록/수정/삭제/상세조회)
-   - Schedule: `GET /items/calendar/` 연동, 월별 달력 UI
-   - Stats: `GET /items/stats/`를 Recharts로 시각화
-   - Settings: 프로필 수정(`PATCH /auth/me/`), 비밀번호 변경, 알림 설정(`GET/PATCH /notifications/settings/`), 회원 탈퇴(`DELETE /auth/me/`) 화면 (로그아웃은 `AppLayout`에 이미 연결됨)
-   - 이메일 인증/비밀번호 재설정 화면(라우트) 추가 — 백엔드 API는 이미 있음
-   - 카카오 로그인 버튼/SDK 연동
-   - 인앱 알림 목록 UI (`GET /notifications/`)
-2. **알림 발송 인프라** — `generate_notifications` 크론 스케줄링(플랫폼 미정, `manage.py flushexpiredtokens`도 같이 묶어서 처리), 실제 푸시 발송(FCM/APNs — 모바일 스택 확정 후)
-3. **결제/구독** — 프리미엄 플랜(월 2,900원 기획가) 결제 연동. 백엔드에 관련 모델/API 전혀 없음, 처음부터 시작
-4. **이메일 발송** — 현재 콘솔 백엔드(개발용). 실제 SMTP/이메일 서비스 선정 필요
-5. **모바일 앱** — 스택 자체가 미정
-6. **배포 인프라** — 프로덕션 서버/DB 호스팅 미정. `.envs/.env.prod`는 현재 로컬 Postgres를 가리키고 있어 실제 배포 시 값 교체 필요. 배포 확정 시 rate limiting용 캐시를 Redis 등 공유 캐시로 교체하고, refresh 쿠키 `Secure` 속성이 실제로 켜지는지 확인 필요(위 "인증 보안 강화" 참고)
-7. **출시 이후로 명시적으로 미룬 것** (지금 안 해도 됨): Google 소셜 로그인, 가족 공유 기능
+1. **알림 발송 인프라** — `generate_notifications` 크론 스케줄링(플랫폼 미정, `manage.py flushexpiredtokens`도 같이 묶어서 처리), 실제 푸시 발송(FCM/APNs — 모바일 스택 확정 후)
+2. **결제/구독** — 프리미엄 플랜(월 2,900원 기획가) 결제 연동. 백엔드에 관련 모델/API 전혀 없음, `PricingPage`도 자리표시자, 처음부터 시작
+3. **이메일 발송** — 현재 콘솔 백엔드(개발용). 실제 SMTP/이메일 서비스 선정 필요
+4. **모바일 앱** — 스택 자체가 미정
+5. **배포 인프라** — 프로덕션 서버/DB 호스팅 미정. `.envs/.env.prod`는 현재 로컬 Postgres를 가리키고 있어 실제 배포 시 값 교체 필요. 배포 확정 시 rate limiting용 캐시를 Redis 등 공유 캐시로 교체하고, refresh 쿠키 `Secure` 속성이 실제로 켜지는지 확인 필요(위 "인증 보안 강화" 참고). 카카오 디벨로퍼스에도 배포 도메인을 Web 플랫폼/Redirect URI로 추가 등록해야 함
+6. **출시 이후로 명시적으로 미룬 것** (지금 안 해도 됨): Google 소셜 로그인, 가족 공유 기능
+
+카카오 로그인 포함 프론트엔드-백엔드 연동은 결제(Pricing)만 빼고 전부 끝났고, 실제 계정으로 검증까지 완료됐습니다 — 위 "완료된 것 > 프론트엔드" 참고.
 
 ## 다음 세션에서 이어가려면
 
 1. 위 "지금 커밋 안 된 변경사항" 섹션부터 확인하고 커밋
 2. `git log --oneline -15`로 최근 커밋 히스토리 확인, `README.md`의 "개발 현황" 체크리스트로 기획 대비 위치 확인
-3. 이 문서의 "남은 작업" 1번(프론트엔드-백엔드 연동)부터 시작하는 걸 추천 — 백엔드 API는 이미 다 준비되어 있고, 화면 자리표시자만 채우면 되는 상태
-4. 로컬 실행: `backend/README.md`, `frontend/README.md`의 "로컬 개발 환경 설정" 참고 (둘 다 `.envs/.env.dev`를 로컬에 직접 만들어야 함 — git에 없음)
+3. 이 문서의 "남은 작업" 1번(알림 발송 인프라)부터 시작하는 걸 추천 — 프론트엔드-백엔드 연동은 결제(Pricing) 빼고 다 끝난 상태
+4. 로컬 실행: `backend/README.md`, `frontend/README.md`의 "로컬 개발 환경 설정" 참고 (둘 다 `.envs/.env.dev`를 로컬에 직접 만들어야 함 — git에 없음, 카카오 로그인 테스트하려면 `VITE_KAKAO_JS_KEY`/`KAKAO_REST_API_KEY`/`KAKAO_CLIENT_SECRET`도 필요)
