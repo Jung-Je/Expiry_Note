@@ -30,6 +30,7 @@ export default function App() {
                 <Route path="/schedule" element={<SchedulePage />} />
                 <Route path="/items/new" element={<ItemFormPage />} />
                 <Route path="/items/:id" element={<ItemDetailPage />} />
+                <Route path="/items/:id/edit" element={<ItemFormPage />} />
                 <Route path="/stats" element={<StatsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
