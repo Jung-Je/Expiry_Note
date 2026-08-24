@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.items",
     "apps.notifications",
+    "apps.billing",
 ]
 
 MIDDLEWARE = [
@@ -189,6 +190,8 @@ REST_FRAMEWORK = {
         "auth-email-verify": "10/hour",
         "auth-password-change": "20/hour",
         "auth-token-refresh": "30/min",
+        # 결제 시도 남용/카드 대입 공격 방지.
+        "billing-subscribe": "10/min",
     },
 }
 
@@ -216,6 +219,15 @@ SIMPLE_JWT = {
 # 시크릿" 기능을 켰을 때만 필요 — 꺼져 있으면 빈 값으로 둬도 된다.
 KAKAO_REST_API_KEY = env("KAKAO_REST_API_KEY", default="")
 KAKAO_CLIENT_SECRET = env("KAKAO_CLIENT_SECRET", default="")
+
+
+# Toss Payments (구독 결제)
+# TOSS_CLIENT_KEY는 프론트 JS SDK 초기화에도 쓰이는 공개 키라 노출돼도 된다
+# (frontend/.envs의 VITE_TOSS_CLIENT_KEY로 별도 관리). TOSS_SECRET_KEY는
+# billingKey 발급/결제 승인 API를 호출할 때 Basic 인증에 쓰는 값으로, 절대
+# 프론트로 넘기면 안 된다(apps/billing/services/toss.py).
+TOSS_CLIENT_KEY = env("TOSS_CLIENT_KEY", default="")
+TOSS_SECRET_KEY = env("TOSS_SECRET_KEY", default="")
 
 
 # Refresh token cookie
