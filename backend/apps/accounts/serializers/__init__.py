@@ -9,10 +9,14 @@ from apps.accounts.serializers.auth import (
     UpdateProfileSerializer,
     UserSerializer,
 )
-from apps.accounts.serializers.token import EmailTokenObtainPairSerializer
+from apps.accounts.serializers.token import (
+    CookieTokenRefreshSerializer,
+    EmailTokenObtainPairSerializer,
+)
 
 __all__ = [
     "ChangePasswordSerializer",
+    "CookieTokenRefreshSerializer",
     "EmailTokenObtainPairSerializer",
     "EmailVerificationConfirmSerializer",
     "KakaoLoginSerializer",
