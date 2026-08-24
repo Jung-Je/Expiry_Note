@@ -6,17 +6,13 @@
 
 ## 지금 커밋 안 된 변경사항부터 처리하세요
 
-결제/구독(토스페이먼츠 자동결제) 기능이 아직 커밋 전입니다. 백엔드·프론트엔드 전부 구현하고 테스트 키로 라이브 검증까지 마쳤습니다. 이전 커밋들(카카오 로그인, 알림/토큰 정리 스케줄러 등)은 이미 파일별로 커밋됐습니다.
+실제 이메일 발송(Gmail SMTP) 연동이 아직 커밋 전입니다. 라이브로 검증까지 마쳤습니다. 이전 커밋들(카카오 로그인, 결제/구독 등)은 이미 파일별로 커밋됐습니다.
 
-- **`backend/apps/billing/`** (신규 앱) — `Subscription`(플랜 FREE/PREMIUM × 상태 ACTIVE/CANCELED, `customer_key`/`billing_key`/`current_period_end`)·`Payment` 모델, `services/toss.py`(빌링키 발급/자동결제 승인 API 클라이언트), `services/subscription.py`(구독 시작/해지/갱신 오케스트레이션), REST 뷰/시리얼라이저/urls, admin 등록. `POST /billing/subscribe/`·`POST /billing/cancel/`·`GET /billing/subscription/`·`GET /billing/payments/`
-- **`backend/apps/billing/management/commands/renew_subscriptions.py`** — 오늘이 결제 예정일인 프리미엄 구독을 갱신 청구. `runscheduler`에 매일 08:00으로 등록됨(`apps/core/management/commands/runscheduler.py` 수정)
-- **`backend/config/settings/base.py`** — `apps.billing` 추가, `billing-subscribe` 스로틀 rate, `TOSS_CLIENT_KEY`/`TOSS_SECRET_KEY` 설정
-- **`frontend/src/features/billing/`** (신규) — `api.ts`/`hooks.ts`(TanStack Query), `toss.ts`(토스 SDK 로드 + `requestBillingAuth()`)
-- **`frontend/src/pages/PricingPage.tsx`** — 무료/프리미엄 플랜 비교, 구독/해지 버튼, 결제 내역 테이블로 전면 재작성(기존 자리표시자 대체)
-- **`frontend/src/pages/billing/{BillingSuccessPage,BillingFailPage}.tsx`** (신규) — 토스 카드 등록 결제창의 성공/실패 리다이렉트 콜백 처리
-- 문서: `backend/README.md`에 "결제/구독" 섹션 추가, 스케줄러 섹션에 `renew_subscriptions` 반영. `frontend/README.md`에 "구독/결제" 섹션 추가. 루트 `README.md` 개발 현황에서 `PricingPage` 자리표시자 문구 제거
+- **`backend/config/settings/base.py`** — `EMAIL_HOST`/`EMAIL_PORT`/`EMAIL_USE_TLS`/`EMAIL_HOST_USER`/`EMAIL_HOST_PASSWORD` 설정 추가(SMTP 백엔드를 쓸 때만 실제로 쓰임, 콘솔 백엔드일 땐 무시됨). 기본값은 Gmail SMTP(`smtp.gmail.com:587`) 기준
+- **`backend/apps/accounts/services/email.py`** — 모듈 docstring을 "SMTP 연동 추후 확정"에서 실제 사용법 안내로 갱신(코드 로직 자체는 변경 없음 — 이미 Django `send_mail()`을 쓰고 있어서 `EMAIL_BACKEND` env var만 바꾸면 됐음)
+- 문서: `backend/README.md`에 Gmail SMTP 설정 방법(앱 비밀번호 발급 등) 추가
 
-백엔드 테스트 108개(기존 85 + 신규 23)·`check-all.sh` 확인 완료. 토스페이먼츠 테스트(API 개별 연동) 키로 실제 브라우저에서 카드 등록 → 빌링키 발급 → 첫 결제 승인 → 프리미엄 전환 → 결제 내역 표시까지 라이브로 검증함. 실패 리다이렉트(`NOT_SUPPORTED_CARD_TYPE`)도 `/billing/fail` 페이지가 올바르게 에러 메시지를 보여주는 것까지 확인함. 커밋만 하면 됩니다.
+기존 108개 테스트는 영향 없음(pytest-django가 테스트 중엔 항상 in-memory 백엔드로 강제 전환). Gmail 앱 비밀번호를 발급받아 로컬에서 SMTP 백엔드로 전환한 뒤, 실제 계정(회원가입 → 인증 메일, 비밀번호 재설정 메일)으로 라이브 발송·수신까지 확인함. 커밋만 하면 됩니다.
 
 ```bash
 bash scripts/check-all.sh   # 백엔드 포맷팅+린트+Django check, 프론트 린트까지 한 번에
@@ -94,6 +90,15 @@ cd frontend && npm run test # 프론트 테스트
 
 **아직 안 한 것**: 실제 서비스에 적용할 운영(live) 키는 사업자 등록 심사가 필요해서 미발급 — 지금은 테스트 키로만 검증. 배포 확정 시 운영 키로 교체 필요.
 
+### 이메일 발송 (Gmail SMTP)
+
+회원가입 인증/비밀번호 재설정 메일의 실제 발송을 Gmail SMTP로 연동했습니다. 메일 발송 코드(`apps/accounts/services/email.py`)는 원래부터 Django 표준 `send_mail()`을 쓰고 있어서 새 코드는 필요 없었고, `EMAIL_BACKEND`를 콘솔 백엔드에서 `django.core.mail.backends.smtp.EmailBackend`로 바꾸고 `EMAIL_HOST_USER`/`EMAIL_HOST_PASSWORD`(Google 계정의 앱 비밀번호, 일반 로그인 비밀번호 아님)만 채우면 끝나는 설정 문제였습니다.
+
+- Gmail은 인증된 계정과 다른 주소로 발신하는 걸 거부하므로 `DEFAULT_FROM_EMAIL`도 `EMAIL_HOST_USER`와 같은 Gmail 주소로 맞춰야 함
+- 실제 계정으로 회원가입(인증 메일)과 비밀번호 재설정(재설정 메일) 둘 다 라이브로 발송·수신 확인 완료
+
+**아직 안 한 것**: Gmail SMTP는 일일 발송량 제한(약 500통)이 있어 사용자가 많아지면 전용 이메일 서비스(SendGrid/Resend/AWS SES 등)로 교체가 필요할 수 있음 — 지금은 `EMAIL_BACKEND`/`EMAIL_HOST` 등이 전부 env var라 서비스 교체 시에도 코드 변경 없이 설정만 바꾸면 됨.
+
 ### 프론트엔드 — 백엔드 API 연동 사실상 전 영역 완료
 
 Vite+React+TS, 라우팅(`react-router-dom`), TanStack Query(서버 상태), React Hook Form+Zod(폼), Recharts(차트), date-fns(달력). 인증 컨텍스트(`AuthContext`)와 axios 인스턴스(`lib/api.ts`, 401 시 자동 refresh)를 기반으로 화면마다 `features/<domain>/{api.ts,hooks.ts}` 얇은 레이어를 두는 패턴을 씀.
@@ -111,17 +116,16 @@ Vite+React+TS, 라우팅(`react-router-dom`), TanStack Query(서버 상태), Rea
 
 우선순위 순서 제안:
 
-1. **이메일 발송** — 어떤 SMTP/이메일 서비스(SendGrid, AWS SES 등)를 쓸지부터 결정 필요. 현재 콘솔 백엔드(개발용)
-2. **모바일 앱** — 스택 자체가 미정
-3. **배포 인프라** — 프로덕션 서버/DB 호스팅 미정. `.envs/.env.prod`는 현재 로컬 Postgres를 가리키고 있어 실제 배포 시 값 교체 필요. 배포 확정 시 rate limiting용 캐시를 Redis 등 공유 캐시로 교체하고, refresh 쿠키 `Secure` 속성이 실제로 켜지는지 확인 필요(위 "인증 보안 강화" 참고). 카카오 디벨로퍼스에도 배포 도메인을 Web 플랫폼/Redirect URI로 추가 등록해야 함. 토스페이먼츠도 사업자 등록 후 운영 키로 교체 필요(위 "결제/구독" 참고). `runscheduler` 워커도 실제로 띄워야 함(위 "알림 생성/토큰 정리/구독 갱신 스케줄러" 참고)
-4. **실제 푸시 발송(FCM/APNs)** — 모바일 스택 확정 후. 알림 생성 자체(크론 스케줄링 포함)는 이미 끝남
-5. **출시 이후로 명시적으로 미룬 것** (지금 안 해도 됨): Google 소셜 로그인, 가족 공유 기능
+1. **모바일 앱** — 스택 자체가 미정
+2. **배포 인프라** — 프로덕션 서버/DB 호스팅 미정. `.envs/.env.prod`는 현재 로컬 Postgres를 가리키고 있어 실제 배포 시 값 교체 필요. 배포 확정 시 rate limiting용 캐시를 Redis 등 공유 캐시로 교체하고, refresh 쿠키 `Secure` 속성이 실제로 켜지는지 확인 필요(위 "인증 보안 강화" 참고). 카카오 디벨로퍼스에도 배포 도메인을 Web 플랫폼/Redirect URI로 추가 등록해야 함. 토스페이먼츠도 사업자 등록 후 운영 키로 교체 필요(위 "결제/구독" 참고). Gmail SMTP는 사용자가 많아지면 전용 이메일 서비스로 교체 검토(위 "이메일 발송" 참고). `runscheduler` 워커도 실제로 띄워야 함(위 "알림 생성/토큰 정리/구독 갱신 스케줄러" 참고)
+3. **실제 푸시 발송(FCM/APNs)** — 모바일 스택 확정 후. 알림 생성 자체(크론 스케줄링 포함)는 이미 끝남
+4. **출시 이후로 명시적으로 미룬 것** (지금 안 해도 됨): Google 소셜 로그인, 가족 공유 기능
 
-카카오 로그인·결제/구독 포함 프론트엔드-백엔드 연동은 전부 끝났고, 실제 계정/테스트 키로 검증까지 완료됐습니다 — 위 "완료된 것 > 프론트엔드" 참고.
+카카오 로그인·결제/구독·이메일 발송 포함 프론트엔드-백엔드 연동은 전부 끝났고, 실제 계정/테스트 키로 검증까지 완료됐습니다 — 위 "완료된 것" 각 절 참고.
 
 ## 다음 세션에서 이어가려면
 
 1. 위 "지금 커밋 안 된 변경사항" 섹션부터 확인하고 커밋
 2. `git log --oneline -15`로 최근 커밋 히스토리 확인, `README.md`의 "개발 현황" 체크리스트로 기획 대비 위치 확인
-3. "남은 작업"이 전부 사용자 쪽 외부 결정(이메일 서비스, 배포 플랫폼, 모바일 스택)이 필요한 항목들뿐이라, 다음 세션 시작할 때 어느 걸 먼저 할지 사용자에게 확인부터 하는 걸 추천
-4. 로컬 실행: `backend/README.md`, `frontend/README.md`의 "로컬 개발 환경 설정" 참고 (둘 다 `.envs/.env.dev`를 로컬에 직접 만들어야 함 — git에 없음, 카카오 로그인 테스트하려면 `VITE_KAKAO_JS_KEY`/`KAKAO_REST_API_KEY`/`KAKAO_CLIENT_SECRET`, 결제 테스트하려면 `VITE_TOSS_CLIENT_KEY`/`TOSS_CLIENT_KEY`/`TOSS_SECRET_KEY`도 필요)
+3. "남은 작업"이 전부 사용자 쪽 외부 결정(배포 플랫폼, 모바일 스택)이 필요한 항목들뿐이라, 다음 세션 시작할 때 어느 걸 먼저 할지 사용자에게 확인부터 하는 걸 추천
+4. 로컬 실행: `backend/README.md`, `frontend/README.md`의 "로컬 개발 환경 설정" 참고 (둘 다 `.envs/.env.dev`를 로컬에 직접 만들어야 함 — git에 없음, 카카오 로그인 테스트하려면 `VITE_KAKAO_JS_KEY`/`KAKAO_REST_API_KEY`/`KAKAO_CLIENT_SECRET`, 결제 테스트하려면 `VITE_TOSS_CLIENT_KEY`/`TOSS_CLIENT_KEY`/`TOSS_SECRET_KEY`, 실제 이메일 발송을 테스트하려면 `EMAIL_BACKEND`를 SMTP로 바꾸고 `EMAIL_HOST_USER`/`EMAIL_HOST_PASSWORD`도 필요)
