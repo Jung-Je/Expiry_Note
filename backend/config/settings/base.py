@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "apps.items",
     "apps.notifications",
     "apps.billing",
+    "apps.support",
 ]
 
 MIDDLEWARE = [
@@ -192,6 +193,8 @@ REST_FRAMEWORK = {
         "auth-token-refresh": "30/min",
         # 결제 시도 남용/카드 대입 공격 방지.
         "billing-subscribe": "10/min",
+        # 문의 스팸/메일 폭탄 방지.
+        "support-inquiry": "5/hour",
     },
 }
 
@@ -282,3 +285,7 @@ EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 # 2단계 인증을 켠 뒤 발급받는 16자리 값).
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+
+# 설정 > 도움말 및 문의로 들어온 문의를 알려줄 관리자 메일함. 없으면
+# DEFAULT_FROM_EMAIL로 보낸다(운영 초기엔 같은 주소를 발신/수신 겸용으로 씀).
+SUPPORT_NOTIFY_EMAIL = env("SUPPORT_NOTIFY_EMAIL", default=DEFAULT_FROM_EMAIL)
