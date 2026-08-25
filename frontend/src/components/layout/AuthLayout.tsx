@@ -10,10 +10,12 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         </div>
 
         <div className="flex justify-center">
-          <div className="flex h-40 w-40 items-center justify-center rounded-3xl bg-white/10">
-            <div className="flex h-28 w-28 flex-col items-center justify-center rounded-2xl bg-white text-slate-900 shadow-xl">
-              <span className="text-3xl font-bold text-brand">24</span>
-              <span className="mt-1 text-[10px] text-slate-500">결제 3일 전</span>
+          <div className="flex h-[300px] w-[347px] items-start justify-center rounded-[32px] bg-sidebar-active pt-[48px]">
+            <div className="flex h-[183px] w-[183px] items-center justify-center rounded-[42px] bg-brand">
+              <div className="flex h-[108px] w-[108px] flex-col items-center justify-center rounded-[20px] bg-white text-slate-900 shadow-xl">
+                <span className="text-3xl font-bold text-brand">24</span>
+                <span className="mt-1 text-[10px] text-slate-500">결제 3일 전</span>
+              </div>
             </div>
           </div>
         </div>
