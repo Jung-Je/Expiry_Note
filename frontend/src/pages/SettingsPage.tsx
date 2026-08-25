@@ -1,14 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { SectionCard } from '../components/ui/SectionCard'
 import * as authApi from '../features/auth/api'
 import { useAuth } from '../features/auth/useAuth'
 import {
   useNotificationPreferenceQuery,
   useUpdateNotificationPreferenceMutation,
 } from '../features/notifications/hooks'
+import type { InquiryCategory } from '../features/support/api'
+import { useCreateInquiryMutation } from '../features/support/hooks'
 
 const profileSchema = z.object({
   name: z.string().min(1, '이름을 입력하세요.').max(50),
@@ -27,14 +31,20 @@ const passwordSchema = z
   })
 type PasswordFormValues = z.infer<typeof passwordSchema>
 
-function SectionCard({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5">
-      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-      <div className="mt-4">{children}</div>
-    </section>
-  )
-}
+const INQUIRY_CATEGORY_OPTIONS: { value: InquiryCategory; label: string }[] = [
+  { value: 'general', label: '서비스 이용' },
+  { value: 'billing', label: '결제/구독' },
+  { value: 'bug', label: '오류 신고' },
+  { value: 'feature', label: '기능 제안' },
+  { value: 'other', label: '기타' },
+]
+
+const inquirySchema = z.object({
+  category: z.enum(['general', 'billing', 'bug', 'feature', 'other']),
+  title: z.string().min(1, '제목을 입력하세요.').max(100),
+  content: z.string().min(1, '문의 내용을 입력하세요.'),
+})
+type InquiryFormValues = z.infer<typeof inquirySchema>
 
 function ProfileSection() {
   const { user, setUser } = useAuth()
@@ -70,7 +80,7 @@ function ProfileSection() {
             id="email"
             value={user?.email ?? ''}
             disabled
-            className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500"
+            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500"
           />
         </div>
 
@@ -80,7 +90,7 @@ function ProfileSection() {
           </label>
           <input
             id="name"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
             {...register('name')}
           />
           {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
@@ -92,7 +102,7 @@ function ProfileSection() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="self-start rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+          className="self-start rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
         >
           저장
         </button>
@@ -135,7 +145,7 @@ function PasswordSection() {
             id="current_password"
             type="password"
             autoComplete="current-password"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
             {...register('current_password')}
           />
           {errors.current_password && (
@@ -151,7 +161,7 @@ function PasswordSection() {
             id="new_password"
             type="password"
             autoComplete="new-password"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
             {...register('new_password')}
           />
           {errors.new_password && <p className="text-sm text-red-600">{errors.new_password.message}</p>}
@@ -165,7 +175,7 @@ function PasswordSection() {
             id="new_password_confirm"
             type="password"
             autoComplete="new-password"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
             {...register('new_password_confirm')}
           />
           {errors.new_password_confirm && (
@@ -185,7 +195,7 @@ function PasswordSection() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="self-start rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+          className="self-start rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
         >
           변경
         </button>
@@ -209,7 +219,7 @@ function NotificationSection() {
               type="checkbox"
               checked={preference?.push_enabled ?? false}
               onChange={(event) => updatePreference.mutate({ push_enabled: event.target.checked })}
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
             />
             푸시 알림 받기
           </label>
@@ -222,19 +232,103 @@ function NotificationSection() {
   )
 }
 
+function InquirySection() {
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const createInquiry = useCreateInquiryMutation()
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<InquiryFormValues>({
+    resolver: zodResolver(inquirySchema),
+    defaultValues: { category: 'general', title: '', content: '' },
+  })
+
+  async function onSubmit(values: InquiryFormValues) {
+    setStatus('idle')
+    try {
+      await createInquiry.mutateAsync(values)
+      setStatus('success')
+      reset()
+    } catch {
+      setStatus('error')
+    }
+  }
+
+  return (
+    <SectionCard title="도움말 및 문의">
+      <p className="text-sm text-slate-500">서비스 이용 중 궁금한 점을 남겨주세요.</p>
+      <form className="mt-4 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-slate-700" htmlFor="inquiry_category">
+            문의 유형
+          </label>
+          <select
+            id="inquiry_category"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
+            {...register('category')}
+          >
+            {INQUIRY_CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-slate-700" htmlFor="inquiry_title">
+            제목
+          </label>
+          <input
+            id="inquiry_title"
+            placeholder="문의 제목을 입력하세요"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
+            {...register('title')}
+          />
+          {errors.title && <p className="text-sm text-red-600">{errors.title.message}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-slate-700" htmlFor="inquiry_content">
+            내용
+          </label>
+          <textarea
+            id="inquiry_content"
+            rows={4}
+            placeholder="문의 내용을 자세히 입력해 주세요."
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
+            {...register('content')}
+          />
+          {errors.content && <p className="text-sm text-red-600">{errors.content.message}</p>}
+        </div>
+
+        {status === 'success' && (
+          <p className="text-sm text-emerald-600">문의가 접수됐습니다. 빠르게 답변드릴게요.</p>
+        )}
+        {status === 'error' && <p className="text-sm text-red-600">문의 접수에 실패했습니다.</p>}
+
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="self-start rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
+        >
+          문의 보내기
+        </button>
+      </form>
+    </SectionCard>
+  )
+}
+
 function DangerSection() {
   const { clearSession } = useAuth()
   const navigate = useNavigate()
   const [isWithdrawing, setIsWithdrawing] = useState(false)
+  const [isConfirming, setIsConfirming] = useState(false)
 
   async function handleWithdraw() {
-    if (
-      !window.confirm(
-        '정말 탈퇴하시겠어요? 등록된 모든 항목과 알림이 함께 삭제되며 되돌릴 수 없습니다.',
-      )
-    ) {
-      return
-    }
+    setIsConfirming(false)
     setIsWithdrawing(true)
     try {
       await authApi.withdraw()
@@ -252,12 +346,22 @@ function DangerSection() {
       </p>
       <button
         type="button"
-        onClick={handleWithdraw}
+        onClick={() => setIsConfirming(true)}
         disabled={isWithdrawing}
-        className="mt-4 rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+        className="mt-4 rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
       >
         회원 탈퇴
       </button>
+
+      {isConfirming && (
+        <ConfirmDialog
+          title="정말 탈퇴하시겠어요?"
+          description="등록된 모든 항목과 알림이 함께 삭제되며 되돌릴 수 없습니다."
+          confirmLabel="탈퇴"
+          onCancel={() => setIsConfirming(false)}
+          onConfirm={handleWithdraw}
+        />
+      )}
     </SectionCard>
   )
 }
@@ -272,6 +376,7 @@ export function SettingsPage() {
         <ProfileSection />
         <PasswordSection />
         <NotificationSection />
+        <InquirySection />
         <DangerSection />
       </div>
     </div>
