@@ -1,1 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --font-sans:
+    'Noto Sans KR', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* 피그마 디자인 토큰 (전체 UI 예시 파일에서 추출) */
+  --color-sidebar: #22243b;
+  --color-sidebar-active: #343755;
+  --color-brand: #635bff;
+  --color-brand-hover: #7b74ff;
+  --color-brand-light: #eeedff;
+}
