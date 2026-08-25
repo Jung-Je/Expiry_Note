@@ -61,3 +61,31 @@ export function useDeleteItemMutation() {
     },
   })
 }
+
+export function useCalendarNotesQuery(year: number, month: number) {
+  return useQuery({
+    queryKey: ['items', 'calendar-notes', year, month],
+    queryFn: () => itemsApi.listCalendarNotes({ year, month }),
+  })
+}
+
+export function useUpsertCalendarNoteMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ date, content }: { date: string; content: string }) =>
+      itemsApi.upsertCalendarNote(date, content),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['items', 'calendar-notes'] })
+    },
+  })
+}
+
+export function useDeleteCalendarNoteMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (date: string) => itemsApi.deleteCalendarNote(date),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['items', 'calendar-notes'] })
+    },
+  })
+}
