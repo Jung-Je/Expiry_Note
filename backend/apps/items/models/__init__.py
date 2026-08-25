@@ -1,3 +1,4 @@
+from apps.items.models.calendar_note import CalendarNote
 from apps.items.models.expiry_item import (
     UPCOMING_WITHIN_DAYS,
     URGENT_WITHIN_DAYS,
@@ -7,5 +8,6 @@ from apps.items.models.expiry_item import (
 __all__ = [
     "UPCOMING_WITHIN_DAYS",
     "URGENT_WITHIN_DAYS",
+    "CalendarNote",
     "ExpiryItem",
 ]
