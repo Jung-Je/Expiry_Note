@@ -71,6 +71,12 @@ class TestGetItemStats:
         assert by_category[ExpiryItem.Category.WARRANTY] == 1
         assert by_category[ExpiryItem.Category.OTHER] == 0
 
+        by_category_amount = {row["category"]: row["total_amount"] for row in stats["by_category"]}
+        assert by_category_amount[ExpiryItem.Category.SUBSCRIPTION] == 10000
+        assert by_category_amount[ExpiryItem.Category.CONTRACT] == 20000
+        assert by_category_amount[ExpiryItem.Category.WARRANTY] == 0  # amount 없이 생성됨
+        assert by_category_amount[ExpiryItem.Category.OTHER] == 0
+
         by_status = {row["status"]: row["count"] for row in stats["by_status"]}
         assert by_status[ExpiryItem.Status.EXPIRED] == 1
         assert by_status[ExpiryItem.Status.URGENT] == 1

@@ -43,6 +43,10 @@ def get_item_stats(user, *, today: date | None = None) -> dict:
             "category": choice.value,
             "label": choice.label,
             "count": queryset.filter(category=choice.value).count(),
+            "total_amount": queryset.filter(category=choice.value).aggregate(total=Sum("amount"))[
+                "total"
+            ]
+            or 0,
         }
         for choice in ExpiryItem.Category
     ]
