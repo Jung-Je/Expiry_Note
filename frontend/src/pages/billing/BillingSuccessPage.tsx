@@ -27,7 +27,7 @@ export function BillingSuccessPage() {
     return (
       <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 px-4 text-center">
         <p className="text-sm text-red-600">구독 등록에 실패했습니다.</p>
-        <Link className="text-sm font-medium text-indigo-600" to="/pricing">
+        <Link className="text-sm font-medium text-brand" to="/pricing">
           요금제로 돌아가기
         </Link>
       </div>

@@ -49,7 +49,7 @@ export function StatsPage() {
         <h1 className="text-xl font-semibold text-slate-900">통계</h1>
         <p className="mt-2 text-sm text-slate-500">
           등록된 항목이 없어 통계를 표시할 수 없습니다.{' '}
-          <Link to="/items/new" className="font-medium text-indigo-600 hover:text-indigo-500">
+          <Link to="/items/new" className="font-medium text-brand hover:text-brand-hover">
             항목을 추가해보세요.
           </Link>
         </p>
@@ -75,7 +75,7 @@ export function StatsPage() {
 
       <section>
         <h2 className="text-base font-semibold text-slate-900">월별 결제 예정 금액</h2>
-        <div className="mt-3 h-64 rounded-lg border border-slate-200 bg-white p-4">
+        <div className="mt-3 h-64 rounded-2xl bg-white shadow-sm shadow-slate-200/70 p-4">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={monthlyData} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={GRIDLINE} vertical={false} />
@@ -107,7 +107,7 @@ export function StatsPage() {
 
       <section>
         <h2 className="text-base font-semibold text-slate-900">유형별 항목 수</h2>
-        <div className="mt-3 h-64 rounded-lg border border-slate-200 bg-white p-4">
+        <div className="mt-3 h-64 rounded-2xl bg-white shadow-sm shadow-slate-200/70 p-4">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={categoryData} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={GRIDLINE} vertical={false} />
@@ -131,7 +131,7 @@ export function StatsPage() {
 
       <section>
         <h2 className="text-base font-semibold text-slate-900">상태별 항목 수</h2>
-        <div className="mt-3 h-64 rounded-lg border border-slate-200 bg-white p-4">
+        <div className="mt-3 h-64 rounded-2xl bg-white shadow-sm shadow-slate-200/70 p-4">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={statusData} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={GRIDLINE} vertical={false} />

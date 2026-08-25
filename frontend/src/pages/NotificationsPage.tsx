@@ -33,7 +33,7 @@ export function NotificationsPage() {
           type="button"
           onClick={() => markAllRead.mutate()}
           disabled={!hasUnread || markAllRead.isPending}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+          className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
         >
           모두 읽음으로 표시
         </button>
@@ -44,7 +44,7 @@ export function NotificationsPage() {
           type="button"
           onClick={() => setFilter('all')}
           className={`rounded-full px-3 py-1 transition ${
-            filter === 'all' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            filter === 'all' ? 'bg-brand text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
           전체
@@ -54,7 +54,7 @@ export function NotificationsPage() {
           onClick={() => setFilter('unread')}
           className={`rounded-full px-3 py-1 transition ${
             filter === 'unread'
-              ? 'bg-indigo-600 text-white'
+              ? 'bg-brand text-white'
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
@@ -70,7 +70,7 @@ export function NotificationsPage() {
             <li
               key={notification.id}
               className={`rounded-lg border px-4 py-3 ${
-                notification.is_read ? 'border-slate-200 bg-white' : 'border-indigo-200 bg-indigo-50'
+                notification.is_read ? 'border-slate-200 bg-white' : 'border-brand-light bg-brand-light'
               }`}
             >
               <div className="flex items-start justify-between gap-4">
@@ -80,7 +80,7 @@ export function NotificationsPage() {
                       {TYPE_LABELS[notification.type]}
                     </span>
                     {!notification.is_read && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-indigo-600" aria-hidden="true" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden="true" />
                     )}
                   </div>
                   <p className="mt-1 text-sm font-medium text-slate-900">{notification.title}</p>
@@ -92,7 +92,7 @@ export function NotificationsPage() {
                     type="button"
                     onClick={() => markRead.mutate(notification.id)}
                     disabled={markRead.isPending}
-                    className="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
+                    className="shrink-0 text-xs font-medium text-brand hover:text-brand-hover disabled:opacity-50"
                   >
                     읽음으로 표시
                   </button>

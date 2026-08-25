@@ -31,7 +31,7 @@ function PaymentHistorySection() {
   return (
     <div className="mt-8 max-w-2xl">
       <h2 className="text-base font-semibold text-slate-900">결제 내역</h2>
-      <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="mt-3 overflow-x-auto rounded-2xl bg-white shadow-sm shadow-slate-200/70">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-slate-500">
@@ -109,7 +109,7 @@ export function PricingPage() {
       ) : (
         <>
           {isPremium && (
-            <div className="mt-6 max-w-lg rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-700">
+            <div className="mt-6 max-w-lg rounded-lg border border-brand-light bg-brand-light p-4 text-sm text-brand">
               {isCanceling ? (
                 <>
                   해지 예약됨 — {subscription?.current_period_end}까지 프리미엄이 유지됩니다.
@@ -123,7 +123,7 @@ export function PricingPage() {
           {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
           <div className="mt-6 grid max-w-2xl gap-4 sm:grid-cols-2">
-            <div className="rounded-lg border border-slate-200 bg-white p-5">
+            <div className="rounded-2xl bg-white shadow-sm shadow-slate-200/70 p-5">
               <h2 className="text-base font-semibold text-slate-900">무료</h2>
               <p className="mt-1 text-2xl font-bold text-slate-900">
                 0원<span className="text-sm font-normal text-slate-500"> / 월</span>
@@ -134,13 +134,13 @@ export function PricingPage() {
                 ))}
               </ul>
               {!isPremium && (
-                <p className="mt-4 rounded-md bg-slate-100 px-3 py-2 text-center text-sm font-medium text-slate-500">
+                <p className="mt-4 rounded-xl bg-slate-100 px-3 py-2 text-center text-sm font-medium text-slate-500">
                   현재 이용 중
                 </p>
               )}
             </div>
 
-            <div className="rounded-lg border border-indigo-300 bg-white p-5">
+            <div className="rounded-lg border border-brand bg-white p-5">
               <h2 className="text-base font-semibold text-slate-900">프리미엄</h2>
               <p className="mt-1 text-2xl font-bold text-slate-900">
                 2,900원<span className="text-sm font-normal text-slate-500"> / 월</span>
@@ -153,7 +153,7 @@ export function PricingPage() {
 
               {isPremium ? (
                 isCanceling ? (
-                  <p className="mt-4 rounded-md bg-slate-100 px-3 py-2 text-center text-sm font-medium text-slate-500">
+                  <p className="mt-4 rounded-xl bg-slate-100 px-3 py-2 text-center text-sm font-medium text-slate-500">
                     해지 예약됨
                   </p>
                 ) : (
@@ -161,7 +161,7 @@ export function PricingPage() {
                     type="button"
                     onClick={handleCancel}
                     disabled={cancelSubscription.isPending}
-                    className="mt-4 w-full rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                    className="mt-4 w-full rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                   >
                     구독 해지
                   </button>
@@ -171,7 +171,7 @@ export function PricingPage() {
                   type="button"
                   onClick={handleSubscribe}
                   disabled={isRedirecting}
-                  className="mt-4 w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+                  className="mt-4 w-full rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
                 >
                   {isRedirecting ? '이동 중...' : '카드 등록하고 시작하기'}
                 </button>
