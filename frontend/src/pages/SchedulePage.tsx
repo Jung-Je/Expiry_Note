@@ -13,8 +13,9 @@ import {
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Drawer } from '../components/ui/Drawer'
-import type { ExpiryItem } from '../features/items/api'
+import type { ExpiryItem, ItemCategory } from '../features/items/api'
 import {
+  CATEGORY_OPTIONS,
   categoryLabel,
   STATUS_BADGE_STYLES,
   STATUS_BORDER_STYLES,
@@ -100,26 +101,13 @@ function ScheduleDetailDrawer({ item, onClose }: { item: ExpiryItem; onClose: ()
 export function SchedulePage() {
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()))
   const [selectedItem, setSelectedItem] = useState<ExpiryItem | null>(null)
+  const [categoryFilter, setCategoryFilter] = useState<ItemCategory | 'all'>('all')
   const year = cursor.getFullYear()
   const month = cursor.getMonth() + 1
 
   const { data: calendar, isLoading } = useMonthlyCalendarQuery(year, month)
 
-  const itemsByDate = useMemo(() => {
-    const map = new Map<string, ExpiryItem[]>()
-    for (const day of calendar?.days ?? []) {
-      map.set(day.date, day.items)
-    }
-    return map
-  }, [calendar])
-
-  const gridDays = useMemo(() => {
-    const gridStart = startOfWeek(startOfMonth(cursor))
-    const gridEnd = endOfWeek(endOfMonth(cursor))
-    return eachDayOfInterval({ start: gridStart, end: gridEnd })
-  }, [cursor])
-
-  const monthItems = useMemo(
+  const allMonthItems = useMemo(
     () =>
       (calendar?.days ?? [])
         .flatMap((day) => day.items)
@@ -127,12 +115,68 @@ export function SchedulePage() {
     [calendar],
   )
 
+  const categoryFilters = useMemo(() => {
+    const counts = new Map<ItemCategory, number>()
+    for (const item of allMonthItems) {
+      counts.set(item.category, (counts.get(item.category) ?? 0) + 1)
+    }
+    return [
+      { value: 'all' as const, label: '전체', count: allMonthItems.length },
+      ...CATEGORY_OPTIONS.filter((option) => counts.has(option.value)).map((option) => ({
+        value: option.value,
+        label: option.label,
+        count: counts.get(option.value) ?? 0,
+      })),
+    ]
+  }, [allMonthItems])
+
+  const monthItems = useMemo(
+    () =>
+      categoryFilter === 'all'
+        ? allMonthItems
+        : allMonthItems.filter((item) => item.category === categoryFilter),
+    [allMonthItems, categoryFilter],
+  )
+
+  const itemsByDate = useMemo(() => {
+    const map = new Map<string, ExpiryItem[]>()
+    for (const item of monthItems) {
+      const existing = map.get(item.expiry_date) ?? []
+      existing.push(item)
+      map.set(item.expiry_date, existing)
+    }
+    return map
+  }, [monthItems])
+
+  const gridDays = useMemo(() => {
+    const gridStart = startOfWeek(startOfMonth(cursor))
+    const gridEnd = endOfWeek(endOfMonth(cursor))
+    return eachDayOfInterval({ start: gridStart, end: gridEnd })
+  }, [cursor])
+
   return (
     <div>
       <h1 className="text-xl font-semibold text-slate-900">일정</h1>
       <p className="mt-2 text-sm text-slate-500">결제·만료 일정을 한눈에 확인하세요.</p>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_280px]">
+      <div className="mt-4 flex flex-wrap gap-2">
+        {categoryFilters.map((filter) => (
+          <button
+            key={filter.value}
+            type="button"
+            onClick={() => setCategoryFilter(filter.value)}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+              categoryFilter === filter.value
+                ? 'bg-brand text-white'
+                : 'bg-white text-slate-600 shadow-sm shadow-slate-200/70 hover:bg-slate-50'
+            }`}
+          >
+            {filter.label} {filter.count}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_280px]">
         <div className="rounded-2xl bg-white p-5 shadow-sm shadow-slate-200/70">
           <div className="flex items-center justify-center gap-4">
             <button
@@ -206,7 +250,9 @@ export function SchedulePage() {
           <h2 className="text-sm font-semibold text-slate-900">이번 달 일정</h2>
           <ul className="mt-4 flex flex-col gap-2">
             {monthItems.length === 0 && (
-              <p className="text-sm text-slate-500">이번 달 일정이 없습니다.</p>
+              <p className="text-sm text-slate-500">
+                {categoryFilter === 'all' ? '이번 달 일정이 없습니다.' : '선택한 유형의 일정이 없습니다.'}
+              </p>
             )}
             {monthItems.map((item) => (
               <li key={item.id}>
