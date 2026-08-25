@@ -37,6 +37,7 @@ export interface CategoryStat {
   category: ItemCategory
   label: string
   count: number
+  total_amount: number
 }
 
 export interface StatusStat {
