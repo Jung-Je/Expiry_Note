@@ -121,6 +121,8 @@ uv run ruff check .                        # 린트
 uv run ruff format .                       # 포맷팅
 ```
 
+프론트엔드와 같이 띄워야 할 때는 저장소 루트의 `scripts/dev.sh`로 백엔드·프론트엔드 개발 서버를 한 번에 실행할 수 있습니다(Ctrl+C 한 번으로 둘 다 종료).
+
 ## 알림 생성/토큰 정리/구독 갱신 스케줄러
 
 `generate_notifications`(만료 임박 알림 생성), `flushexpiredtokens`(만료된 JWT 블랙리스트 정리), `renew_subscriptions`(오늘이 결제 예정일인 프리미엄 구독 갱신 청구)는 원래 cron 같은 외부 스케줄러로 주기적으로 돌리는 걸 전제로 만든 관리 명령어입니다. 배포 플랫폼이 아직 정해지지 않아 시스템 cron에 의존하는 대신, `apps/core/management/commands/runscheduler.py`가 [APScheduler](https://apscheduler.readthedocs.io/)로 이 셋을 프로세스 안에서 직접 스케줄링합니다(`renew_subscriptions` 매일 08:00, `generate_notifications` 매일 09:00, `flushexpiredtokens` 매주 월요일 03:00, 모두 `TIME_ZONE` 기준).

@@ -193,10 +193,11 @@ Expiry_Note/
 ├── backend/     # Django + DRF API 서버 (uv 관리)
 ├── frontend/    # 웹 프론트엔드 (Vite + React, DRF API 연동)
 ├── mobile/      # 모바일 앱 (스택 미정)
-└── docs/        # 기능 명세서, API 명세서 등 프로젝트 문서
+├── docs/        # 기능 명세서, API 명세서 등 프로젝트 문서
+└── scripts/     # 개발/검증용 스크립트 (dev.sh, check-all.sh 등)
 ```
 
-백엔드 개발 환경 설정은 [backend/README.md](backend/README.md)를 참고하세요.
+백엔드 개발 환경 설정은 [backend/README.md](backend/README.md), 프론트엔드는 [frontend/README.md](frontend/README.md)를 참고하세요. 각자 `.envs/.env.dev`를 만든 뒤에는 `scripts/dev.sh`로 백엔드·프론트엔드 개발 서버를 한 번에 띄우고 Ctrl+C 한 번으로 같이 종료할 수 있습니다.
 
 ## 프로젝트 목표
 
