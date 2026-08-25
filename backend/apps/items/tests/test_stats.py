@@ -10,11 +10,11 @@ from apps.items.services.stats import get_item_stats
 TODAY = date(2026, 8, 21)
 
 
-def _make_item(user, *, title="test", days_from_today=0, **kwargs):
+def _make_item(user, *, title="test", days_from_today=0, today=TODAY, **kwargs):
     return ExpiryItem.objects.create(
         user=user,
         title=title,
-        expiry_date=TODAY + timedelta(days=days_from_today),
+        expiry_date=today + timedelta(days=days_from_today),
         **kwargs,
     )
 
@@ -29,12 +29,20 @@ def user(db):
 class TestGetItemStats:
     @pytest.mark.django_db
     def test_counts_by_category_and_status(self, user):
+        # ExpiryItem.status는 today 파라미터가 아니라 실제 오늘 날짜
+        # (timezone.localdate())를 기준으로 계산되는 속성이라(모델의 "지금
+        # 실제 상태"를 나타내야 하므로), 이 테스트만은 고정된 TODAY 상수가
+        # 아니라 진짜 오늘 날짜를 기준으로 항목을 만들어야 세월이 지나도
+        # 계속 맞는 값으로 남는다. 다른 테스트들(월별 합계)은 today 파라미터로
+        # 직접 계산되는 값이라 고정된 TODAY를 그대로 써도 무방하다.
+        real_today = date.today()
         _make_item(
             user,
             title="expired sub",
             category=ExpiryItem.Category.SUBSCRIPTION,
             days_from_today=-1,
             amount=10000,
+            today=real_today,
         )
         _make_item(
             user,
@@ -42,15 +50,17 @@ class TestGetItemStats:
             category=ExpiryItem.Category.CONTRACT,
             days_from_today=3,
             amount=20000,
+            today=real_today,
         )
         _make_item(
             user,
             title="normal warranty",
             category=ExpiryItem.Category.WARRANTY,
             days_from_today=200,
+            today=real_today,
         )
 
-        stats = get_item_stats(user, today=TODAY)
+        stats = get_item_stats(user, today=real_today)
 
         assert stats["total_count"] == 3
         assert stats["expiring_soon_count"] == 1  # only the urgent one
