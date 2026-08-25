@@ -1,11 +1,48 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
-import type { ExpiryItemPayload } from '../features/items/api'
+import { Modal } from '../components/ui/Modal'
+import type { ExpiryItem, ExpiryItemPayload } from '../features/items/api'
 import { CATEGORY_OPTIONS } from '../features/items/constants'
+import { formatAmount } from '../features/items/format'
 import { useCreateItemMutation, useItemQuery, useUpdateItemMutation } from '../features/items/hooks'
+
+function ItemCreatedModal({ item, onClose }: { item: ExpiryItem; onClose: () => void }) {
+  return (
+    <Modal onClose={onClose}>
+      <div className="flex flex-col items-center text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-xl font-bold text-emerald-600">
+          ✓
+        </div>
+        <h2 className="mt-4 text-lg font-semibold text-slate-900">항목 등록이 완료됐어요</h2>
+        <p className="mt-2 text-sm text-slate-500">
+          {item.title} 만료 {item.notify_days_before}일 전에 알림을 보내드릴게요.
+        </p>
+
+        <div className="mt-4 w-full rounded-md bg-slate-50 px-4 py-3 text-left text-sm text-slate-700">
+          {item.title} · {formatAmount(item.amount)} · {item.expiry_date}
+        </div>
+
+        <div className="mt-6 flex w-full gap-3">
+          <Link
+            to="/schedule"
+            className="flex-1 rounded-xl border border-slate-200 px-4 py-2 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            일정 보기
+          </Link>
+          <Link
+            to="/"
+            className="flex-1 rounded-xl bg-brand px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-brand-hover"
+          >
+            대시보드로
+          </Link>
+        </div>
+      </div>
+    </Modal>
+  )
+}
 
 const schema = z.object({
   title: z.string().min(1, '제목을 입력하세요.').max(100),
@@ -39,6 +76,7 @@ export function ItemFormPage() {
   const isEdit = Boolean(id)
   const navigate = useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)
+  const [createdItem, setCreatedItem] = useState<ExpiryItem | null>(null)
 
   const { data: item, isLoading: isItemLoading } = useItemQuery(isEdit ? id : undefined)
   const createItem = useCreateItemMutation()
@@ -75,11 +113,13 @@ export function ItemFormPage() {
     }
 
     try {
-      const saved =
-        isEdit && id
-          ? await updateItem.mutateAsync({ id, payload })
-          : await createItem.mutateAsync(payload)
-      navigate(`/items/${saved.id}`, { replace: true })
+      if (isEdit && id) {
+        const saved = await updateItem.mutateAsync({ id, payload })
+        navigate(`/items/${saved.id}`, { replace: true })
+        return
+      }
+      const saved = await createItem.mutateAsync(payload)
+      setCreatedItem(saved)
     } catch {
       setServerError('저장에 실패했습니다. 입력 값을 확인해주세요.')
     }
@@ -94,14 +134,18 @@ export function ItemFormPage() {
       <h1 className="text-xl font-semibold text-slate-900">{isEdit ? '항목 수정' : '항목 추가'}</h1>
       <p className="mt-2 text-sm text-slate-500">계약, 구독, 보증 등 만료 항목을 등록하세요.</p>
 
-      <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+      <form
+        className="mt-6 flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-sm shadow-slate-200/70"
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
+      >
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-slate-700" htmlFor="title">
             제목
           </label>
           <input
             id="title"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
             {...register('title')}
           />
           {errors.title && <p className="text-sm text-red-600">{errors.title.message}</p>}
@@ -113,7 +157,7 @@ export function ItemFormPage() {
           </label>
           <select
             id="category"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
             {...register('category')}
           >
             {CATEGORY_OPTIONS.map((option) => (
@@ -131,7 +175,7 @@ export function ItemFormPage() {
           <input
             id="expiry_date"
             type="date"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
             {...register('expiry_date')}
           />
           {errors.expiry_date && <p className="text-sm text-red-600">{errors.expiry_date.message}</p>}
@@ -147,7 +191,7 @@ export function ItemFormPage() {
             min="0"
             inputMode="numeric"
             placeholder="결제가 없으면 비워두세요"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
             {...register('amount')}
           />
         </div>
@@ -161,7 +205,7 @@ export function ItemFormPage() {
             type="number"
             min="0"
             max="365"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
             {...register('notify_days_before')}
           />
           {errors.notify_days_before && (
@@ -176,7 +220,7 @@ export function ItemFormPage() {
           <textarea
             id="memo"
             rows={3}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
             {...register('memo')}
           />
         </div>
@@ -186,11 +230,18 @@ export function ItemFormPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-md bg-indigo-600 py-2 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+          className="rounded-xl bg-brand py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
         >
           {isEdit ? '저장' : '등록'}
         </button>
       </form>
+
+      {createdItem && (
+        <ItemCreatedModal
+          item={createdItem}
+          onClose={() => navigate(`/items/${createdItem.id}`, { replace: true })}
+        />
+      )}
     </div>
   )
 }

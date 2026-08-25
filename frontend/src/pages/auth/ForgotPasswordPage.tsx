@@ -51,7 +51,7 @@ export function ForgotPasswordPage() {
               id="email"
               type="email"
               autoComplete="email"
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
               {...register('email')}
             />
             {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
@@ -62,7 +62,7 @@ export function ForgotPasswordPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="rounded-md bg-indigo-600 py-2 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+            className="rounded-xl bg-brand py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
           >
             재설정 링크 보내기
           </button>
@@ -70,7 +70,7 @@ export function ForgotPasswordPage() {
       )}
 
       <p className="text-center text-sm text-slate-500">
-        <Link className="font-medium text-indigo-600" to="/login">
+        <Link className="font-medium text-brand" to="/login">
           로그인으로 돌아가기
         </Link>
       </p>

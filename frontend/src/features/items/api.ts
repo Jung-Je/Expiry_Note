@@ -37,6 +37,7 @@ export interface CategoryStat {
   category: ItemCategory
   label: string
   count: number
+  total_amount: number
 }
 
 export interface StatusStat {
@@ -107,4 +108,27 @@ export async function getMonthlyCalendar(params: {
 }): Promise<MonthlyCalendar> {
   const { data } = await api.get<MonthlyCalendar>('/items/calendar/', { params })
   return data
+}
+
+export interface CalendarNote {
+  date: string
+  content: string
+  updated_at: string
+}
+
+export async function listCalendarNotes(params: {
+  year: number
+  month: number
+}): Promise<CalendarNote[]> {
+  const { data } = await api.get<CalendarNote[]>('/items/calendar/notes/', { params })
+  return data
+}
+
+export async function upsertCalendarNote(date: string, content: string): Promise<CalendarNote> {
+  const { data } = await api.put<CalendarNote>(`/items/calendar/notes/${date}/`, { content })
+  return data
+}
+
+export async function deleteCalendarNote(date: string): Promise<void> {
+  await api.delete(`/items/calendar/notes/${date}/`)
 }

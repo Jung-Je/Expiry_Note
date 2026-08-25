@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { categoryLabel, STATUS_BADGE_STYLES, STATUS_LABELS } from '../features/items/constants'
 import { formatAmount, formatDday } from '../features/items/format'
 import { useDeleteItemMutation, useItemQuery } from '../features/items/hooks'
@@ -8,10 +10,11 @@ export function ItemDetailPage() {
   const navigate = useNavigate()
   const { data: item, isLoading, isError } = useItemQuery(id)
   const deleteItem = useDeleteItemMutation()
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
 
   async function handleDelete() {
     if (!id) return
-    if (!window.confirm('이 항목을 삭제할까요? 되돌릴 수 없습니다.')) return
+    setIsConfirmingDelete(false)
     await deleteItem.mutateAsync(id)
     navigate('/', { replace: true })
   }
@@ -38,22 +41,22 @@ export function ItemDetailPage() {
         <div className="flex shrink-0 gap-2">
           <Link
             to={`/items/${item.id}/edit`}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
+            className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
           >
             수정
           </Link>
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={() => setIsConfirmingDelete(true)}
             disabled={deleteItem.isPending}
-            className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+            className="rounded-xl border border-red-200 px-3 py-1.5 text-sm text-red-600 transition hover:bg-red-50 disabled:opacity-50"
           >
             삭제
           </button>
         </div>
       </div>
 
-      <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm">
+      <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 rounded-2xl bg-white p-5 text-sm shadow-sm shadow-slate-200/70">
         <dt className="text-slate-500">유형</dt>
         <dd className="text-slate-900">{categoryLabel(item.category)}</dd>
 
@@ -73,6 +76,16 @@ export function ItemDetailPage() {
           </>
         )}
       </dl>
+
+      {isConfirmingDelete && (
+        <ConfirmDialog
+          title="이 항목을 삭제할까요?"
+          description="삭제하면 되돌릴 수 없습니다."
+          confirmLabel="삭제"
+          onCancel={() => setIsConfirmingDelete(false)}
+          onConfirm={handleDelete}
+        />
+      )}
     </div>
   )
 }

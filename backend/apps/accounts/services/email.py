@@ -1,7 +1,8 @@
 """인증 관련 이메일 발송.
 
-DEBUG 환경에서는 `EMAIL_BACKEND`가 콘솔 백엔드라 실제로 메일이 나가지 않고
-런서버 콘솔에 출력된다. 실제 발신용 SMTP/이메일 서비스 연동은 추후 확정.
+로컬 dev 기본값은 콘솔 백엔드라 실제로 메일이 나가지 않고 런서버 콘솔에
+출력된다. 실제 발신은 Gmail SMTP를 쓴다 — `config/settings/base.py`의
+"Email" 절, `backend/README.md` 참고.
 """
 
 from django.conf import settings

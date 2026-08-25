@@ -1,14 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
+import { Toggle } from '../components/ui/Toggle'
 import * as authApi from '../features/auth/api'
 import { useAuth } from '../features/auth/useAuth'
 import {
   useNotificationPreferenceQuery,
   useUpdateNotificationPreferenceMutation,
 } from '../features/notifications/hooks'
+import type { InquiryCategory } from '../features/support/api'
+import { useCreateInquiryMutation } from '../features/support/hooks'
 
 const profileSchema = z.object({
   name: z.string().min(1, '이름을 입력하세요.').max(50),
@@ -27,16 +31,25 @@ const passwordSchema = z
   })
 type PasswordFormValues = z.infer<typeof passwordSchema>
 
-function SectionCard({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5">
-      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-      <div className="mt-4">{children}</div>
-    </section>
-  )
-}
+const INQUIRY_CATEGORY_OPTIONS: { value: InquiryCategory; label: string }[] = [
+  { value: 'general', label: '서비스 이용' },
+  { value: 'billing', label: '결제/구독' },
+  { value: 'bug', label: '오류 신고' },
+  { value: 'feature', label: '기능 제안' },
+  { value: 'other', label: '기타' },
+]
 
-function ProfileSection() {
+const inquirySchema = z.object({
+  category: z.enum(['general', 'billing', 'bug', 'feature', 'other']),
+  title: z.string().min(1, '제목을 입력하세요.').max(100),
+  content: z.string().min(1, '문의 내용을 입력하세요.'),
+})
+type InquiryFormValues = z.infer<typeof inquirySchema>
+
+const inputStyle =
+  'rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none'
+
+function ProfileTab() {
   const { user, setUser } = useAuth()
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const {
@@ -60,8 +73,25 @@ function ProfileSection() {
   }
 
   return (
-    <SectionCard title="프로필">
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+    <div>
+      <h2 className="text-base font-semibold text-slate-900">프로필 설정</h2>
+
+      <div className="mt-5 flex items-center gap-3">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand text-2xl font-bold text-white">
+          {user?.name?.charAt(0)}
+        </div>
+        <p className="text-sm text-slate-500">가입 방식: {user?.signup_source === 'kakao' ? '카카오' : '이메일'}</p>
+      </div>
+
+      <form className="mt-6 flex max-w-sm flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-slate-700" htmlFor="name">
+            이름
+          </label>
+          <input id="name" className={inputStyle} {...register('name')} />
+          {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
+        </div>
+
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-slate-700" htmlFor="email">
             이메일
@@ -70,20 +100,8 @@ function ProfileSection() {
             id="email"
             value={user?.email ?? ''}
             disabled
-            className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500"
+            className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500"
           />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-700" htmlFor="name">
-            이름
-          </label>
-          <input
-            id="name"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            {...register('name')}
-          />
-          {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
         </div>
 
         {status === 'success' && <p className="text-sm text-emerald-600">저장되었습니다.</p>}
@@ -92,17 +110,21 @@ function ProfileSection() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="self-start rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+          className="self-start rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
         >
-          저장
+          변경사항 저장
         </button>
       </form>
-    </SectionCard>
+    </div>
   )
 }
 
-function PasswordSection() {
+function SecurityTab() {
+  const { clearSession } = useAuth()
+  const navigate = useNavigate()
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [isWithdrawing, setIsWithdrawing] = useState(false)
+  const [isConfirming, setIsConfirming] = useState(false)
   const {
     register,
     handleSubmit,
@@ -124,9 +146,26 @@ function PasswordSection() {
     }
   }
 
+  async function handleWithdraw() {
+    setIsConfirming(false)
+    setIsWithdrawing(true)
+    try {
+      await authApi.withdraw()
+      clearSession()
+      navigate('/login', { replace: true })
+    } catch {
+      setIsWithdrawing(false)
+    }
+  }
+
   return (
-    <SectionCard title="비밀번호 변경">
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+    <div>
+      <h2 className="text-base font-semibold text-slate-900">비밀번호 변경</h2>
+      <form
+        className="mt-5 flex max-w-sm flex-col gap-4"
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
+      >
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-slate-700" htmlFor="current_password">
             현재 비밀번호
@@ -135,7 +174,7 @@ function PasswordSection() {
             id="current_password"
             type="password"
             autoComplete="current-password"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className={inputStyle}
             {...register('current_password')}
           />
           {errors.current_password && (
@@ -151,7 +190,7 @@ function PasswordSection() {
             id="new_password"
             type="password"
             autoComplete="new-password"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className={inputStyle}
             {...register('new_password')}
           />
           {errors.new_password && <p className="text-sm text-red-600">{errors.new_password.message}</p>}
@@ -165,7 +204,7 @@ function PasswordSection() {
             id="new_password_confirm"
             type="password"
             autoComplete="new-password"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className={inputStyle}
             {...register('new_password_confirm')}
           />
           {errors.new_password_confirm && (
@@ -185,94 +224,205 @@ function PasswordSection() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="self-start rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+          className="self-start rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
         >
           변경
         </button>
       </form>
-    </SectionCard>
+
+      <div className="mt-10 border-t border-slate-100 pt-6">
+        <h2 className="text-base font-semibold text-red-600">계정 탈퇴</h2>
+        <p className="mt-2 max-w-sm text-sm text-slate-500">
+          탈퇴하면 등록된 만료 항목과 알림이 모두 삭제되며 복구할 수 없습니다.
+        </p>
+        <button
+          type="button"
+          onClick={() => setIsConfirming(true)}
+          disabled={isWithdrawing}
+          className="mt-4 rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+        >
+          회원 탈퇴
+        </button>
+      </div>
+
+      {isConfirming && (
+        <ConfirmDialog
+          title="정말 탈퇴하시겠어요?"
+          description="등록된 모든 항목과 알림이 함께 삭제되며 되돌릴 수 없습니다."
+          confirmLabel="탈퇴"
+          onCancel={() => setIsConfirming(false)}
+          onConfirm={handleWithdraw}
+        />
+      )}
+    </div>
   )
 }
 
-function NotificationSection() {
+function NotificationsTab() {
   const { data: preference, isLoading } = useNotificationPreferenceQuery()
   const updatePreference = useUpdateNotificationPreferenceMutation()
 
   return (
-    <SectionCard title="알림 설정">
+    <div>
+      <h2 className="text-base font-semibold text-slate-900">알림 설정</h2>
       {isLoading ? (
-        <p className="text-sm text-slate-500">불러오는 중...</p>
+        <p className="mt-5 text-sm text-slate-500">불러오는 중...</p>
       ) : (
-        <>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={preference?.push_enabled ?? false}
-              onChange={(event) => updatePreference.mutate({ push_enabled: event.target.checked })}
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            푸시 알림 받기
-          </label>
-          <p className="mt-2 text-xs text-slate-400">
-            설정만 저장되며, 실제 푸시 알림 발송은 아직 준비 중입니다.
-          </p>
-        </>
+        <div className="mt-5 flex max-w-sm items-center justify-between rounded-xl border border-slate-100 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-slate-900">푸시 알림</p>
+            <p className="mt-0.5 text-xs text-slate-400">
+              설정만 저장되며, 실제 발송은 아직 준비 중입니다.
+            </p>
+          </div>
+          <Toggle
+            checked={preference?.push_enabled ?? false}
+            onChange={(checked) => updatePreference.mutate({ push_enabled: checked })}
+            label="푸시 알림"
+          />
+        </div>
       )}
-    </SectionCard>
+    </div>
   )
 }
 
-function DangerSection() {
-  const { clearSession } = useAuth()
-  const navigate = useNavigate()
-  const [isWithdrawing, setIsWithdrawing] = useState(false)
+function InquiryTab() {
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const createInquiry = useCreateInquiryMutation()
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<InquiryFormValues>({
+    resolver: zodResolver(inquirySchema),
+    defaultValues: { category: 'general', title: '', content: '' },
+  })
 
-  async function handleWithdraw() {
-    if (
-      !window.confirm(
-        '정말 탈퇴하시겠어요? 등록된 모든 항목과 알림이 함께 삭제되며 되돌릴 수 없습니다.',
-      )
-    ) {
-      return
-    }
-    setIsWithdrawing(true)
+  async function onSubmit(values: InquiryFormValues) {
+    setStatus('idle')
     try {
-      await authApi.withdraw()
-      clearSession()
-      navigate('/login', { replace: true })
+      await createInquiry.mutateAsync(values)
+      setStatus('success')
+      reset()
     } catch {
-      setIsWithdrawing(false)
+      setStatus('error')
     }
   }
 
   return (
-    <SectionCard title="계정 탈퇴">
-      <p className="text-sm text-slate-500">
-        탈퇴하면 등록된 만료 항목과 알림이 모두 삭제되며 복구할 수 없습니다.
-      </p>
-      <button
-        type="button"
-        onClick={handleWithdraw}
-        disabled={isWithdrawing}
-        className="mt-4 rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+    <div>
+      <h2 className="text-base font-semibold text-slate-900">도움말 및 문의</h2>
+      <p className="mt-2 text-sm text-slate-500">서비스 이용 중 궁금한 점을 남겨주세요.</p>
+      <form
+        className="mt-5 flex max-w-sm flex-col gap-4"
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
       >
-        회원 탈퇴
-      </button>
-    </SectionCard>
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-slate-700" htmlFor="inquiry_category">
+            문의 유형
+          </label>
+          <select id="inquiry_category" className={inputStyle} {...register('category')}>
+            {INQUIRY_CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-slate-700" htmlFor="inquiry_title">
+            제목
+          </label>
+          <input
+            id="inquiry_title"
+            placeholder="문의 제목을 입력하세요"
+            className={inputStyle}
+            {...register('title')}
+          />
+          {errors.title && <p className="text-sm text-red-600">{errors.title.message}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-slate-700" htmlFor="inquiry_content">
+            내용
+          </label>
+          <textarea
+            id="inquiry_content"
+            rows={4}
+            placeholder="문의 내용을 자세히 입력해 주세요."
+            className={inputStyle}
+            {...register('content')}
+          />
+          {errors.content && <p className="text-sm text-red-600">{errors.content.message}</p>}
+        </div>
+
+        {status === 'success' && (
+          <p className="text-sm text-emerald-600">문의가 접수됐습니다. 빠르게 답변드릴게요.</p>
+        )}
+        {status === 'error' && <p className="text-sm text-red-600">문의 접수에 실패했습니다.</p>}
+
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="self-start rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
+        >
+          문의 보내기
+        </button>
+      </form>
+    </div>
   )
 }
 
+type TabKey = 'profile' | 'security' | 'notifications' | 'inquiry'
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'profile', label: '프로필' },
+  { key: 'notifications', label: '알림' },
+  { key: 'inquiry', label: '문의' },
+  { key: 'security', label: '보안' },
+]
+
 export function SettingsPage() {
+  const [activeTab, setActiveTab] = useState<TabKey>('profile')
+
   return (
     <div>
       <h1 className="text-xl font-semibold text-slate-900">설정</h1>
-      <p className="mt-2 text-sm text-slate-500">프로필, 알림, 계정을 관리하세요.</p>
+      <p className="mt-2 text-sm text-slate-500">프로필, 알림 등 계정 설정을 관리하세요.</p>
 
-      <div className="mt-6 flex max-w-lg flex-col gap-6">
-        <ProfileSection />
-        <PasswordSection />
-        <NotificationSection />
-        <DangerSection />
+      <div className="mt-6 flex gap-6">
+        <nav className="flex w-48 shrink-0 flex-col gap-1 rounded-2xl bg-white p-2 shadow-sm shadow-slate-200/70">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
+                activeTab === tab.key
+                  ? 'bg-brand-light text-brand'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+          <Link
+            to="/pricing"
+            className="rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+          >
+            요금제
+          </Link>
+        </nav>
+
+        <div className="flex-1 rounded-2xl bg-white p-6 shadow-sm shadow-slate-200/70">
+          {activeTab === 'profile' && <ProfileTab />}
+          {activeTab === 'notifications' && <NotificationsTab />}
+          {activeTab === 'inquiry' && <InquiryTab />}
+          {activeTab === 'security' && <SecurityTab />}
+        </div>
       </div>
     </div>
   )

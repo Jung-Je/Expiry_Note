@@ -28,7 +28,7 @@ export function VerifyEmailPage() {
       {status === 'success' && (
         <>
           <p className="text-sm text-emerald-600">이메일 인증이 완료되었습니다.</p>
-          <Link className="text-sm font-medium text-indigo-600" to="/login">
+          <Link className="text-sm font-medium text-brand" to="/login">
             로그인하러 가기
           </Link>
         </>
@@ -37,7 +37,7 @@ export function VerifyEmailPage() {
       {status === 'error' && (
         <>
           <p className="text-sm text-red-600">유효하지 않거나 만료된 인증 링크입니다.</p>
-          <Link className="text-sm font-medium text-indigo-600" to="/login">
+          <Link className="text-sm font-medium text-brand" to="/login">
             로그인으로 돌아가기
           </Link>
         </>

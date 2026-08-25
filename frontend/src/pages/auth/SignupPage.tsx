@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
+import { AuthLayout } from '../../components/layout/AuthLayout'
 import { useAuth } from '../../features/auth/useAuth'
 
 const schema = z
@@ -18,6 +19,9 @@ const schema = z
   })
 
 type FormValues = z.infer<typeof schema>
+
+const inputStyle =
+  'rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none'
 
 export function SignupPage() {
   const { signup } = useAuth()
@@ -43,85 +47,86 @@ export function SignupPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">만료노트를 시작해 보세요</h1>
+    <AuthLayout>
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">처음 오셨나요?</h1>
+          <p className="mt-1 text-sm text-slate-500">간단한 정보만 입력하면 바로 시작할 수 있어요.</p>
+        </div>
+
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-slate-700" htmlFor="name">
+              이름
+            </label>
+            <input id="name" className={inputStyle} {...register('name')} />
+            {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-slate-700" htmlFor="email">
+              이메일
+            </label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="example@email.com"
+              className={inputStyle}
+              {...register('email')}
+            />
+            {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-slate-700" htmlFor="password">
+              비밀번호
+            </label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="new-password"
+              placeholder="영문·숫자 조합 8자 이상"
+              className={inputStyle}
+              {...register('password')}
+            />
+            {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-slate-700" htmlFor="password_confirm">
+              비밀번호 확인
+            </label>
+            <input
+              id="password_confirm"
+              type="password"
+              autoComplete="new-password"
+              className={inputStyle}
+              {...register('password_confirm')}
+            />
+            {errors.password_confirm && (
+              <p className="text-sm text-red-600">{errors.password_confirm.message}</p>
+            )}
+          </div>
+
+          {serverError && <p className="text-sm text-red-600">{serverError}</p>}
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="rounded-xl bg-brand py-2.5 text-sm font-semibold text-white transition hover:bg-brand-hover disabled:opacity-50"
+          >
+            회원가입
+          </button>
+        </form>
+
+        <p className="text-center text-sm text-slate-500">
+          이미 계정이 있으신가요?{' '}
+          <Link className="font-medium text-brand" to="/login">
+            로그인
+          </Link>
+        </p>
       </div>
-
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-700" htmlFor="name">
-            이름
-          </label>
-          <input
-            id="name"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            {...register('name')}
-          />
-          {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-700" htmlFor="email">
-            이메일
-          </label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            {...register('email')}
-          />
-          {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-700" htmlFor="password">
-            비밀번호
-          </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            {...register('password')}
-          />
-          {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-700" htmlFor="password_confirm">
-            비밀번호 확인
-          </label>
-          <input
-            id="password_confirm"
-            type="password"
-            autoComplete="new-password"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
-            {...register('password_confirm')}
-          />
-          {errors.password_confirm && (
-            <p className="text-sm text-red-600">{errors.password_confirm.message}</p>
-          )}
-        </div>
-
-        {serverError && <p className="text-sm text-red-600">{serverError}</p>}
-
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="rounded-md bg-indigo-600 py-2 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
-        >
-          회원가입
-        </button>
-      </form>
-
-      <p className="text-center text-sm text-slate-500">
-        이미 계정이 있으신가요?{' '}
-        <Link className="font-medium text-indigo-600" to="/login">
-          로그인
-        </Link>
-      </p>
-    </div>
+    </AuthLayout>
   )
 }

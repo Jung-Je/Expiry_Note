@@ -46,7 +46,7 @@ export function ResetPasswordPage() {
     return (
       <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 px-4 text-center">
         <p className="text-sm text-red-600">잘못된 링크입니다.</p>
-        <Link className="text-sm font-medium text-indigo-600" to="/forgot-password">
+        <Link className="text-sm font-medium text-brand" to="/forgot-password">
           다시 요청하기
         </Link>
       </div>
@@ -68,7 +68,7 @@ export function ResetPasswordPage() {
             id="new_password"
             type="password"
             autoComplete="new-password"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
             {...register('new_password')}
           />
           {errors.new_password && <p className="text-sm text-red-600">{errors.new_password.message}</p>}
@@ -82,7 +82,7 @@ export function ResetPasswordPage() {
             id="new_password_confirm"
             type="password"
             autoComplete="new-password"
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
             {...register('new_password_confirm')}
           />
           {errors.new_password_confirm && (
@@ -95,7 +95,7 @@ export function ResetPasswordPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-md bg-indigo-600 py-2 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+          className="rounded-xl bg-brand py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
         >
           비밀번호 재설정
         </button>
