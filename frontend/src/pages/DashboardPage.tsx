@@ -23,19 +23,21 @@ function StatCard({
   badge?: string
 }) {
   return (
-    <div className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm shadow-slate-200/70">
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconStyle}`}>
-        <Icon />
+    <div className="rounded-2xl bg-white p-[18px] shadow-sm shadow-slate-200/70">
+      <div className="flex items-center gap-2.5">
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconStyle}`}>
+          <Icon />
+        </div>
+        <p className="truncate text-sm text-slate-500">{label}</p>
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-slate-500">{label}</p>
-        <p className="mt-0.5 truncate text-lg font-semibold text-slate-900">{value}</p>
+      <div className="mt-2.5 flex items-center justify-between gap-2">
+        <p className="truncate text-xl font-bold text-slate-900">{value}</p>
+        {badge && (
+          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+            {badge}
+          </span>
+        )}
       </div>
-      {badge && (
-        <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-          {badge}
-        </span>
-      )}
     </div>
   )
 }
