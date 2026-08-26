@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
+import { AuthLayout } from '../../components/layout/AuthLayout'
 import { confirmPasswordReset } from '../../features/auth/api'
 
 const schema = z
@@ -44,62 +45,66 @@ export function ResetPasswordPage() {
 
   if (!uid || !token) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 px-4 text-center">
-        <p className="text-sm text-red-600">잘못된 링크입니다.</p>
-        <Link className="text-sm font-medium text-brand" to="/forgot-password">
-          다시 요청하기
-        </Link>
-      </div>
+      <AuthLayout>
+        <div className="flex flex-col items-center gap-4 text-center">
+          <p className="text-sm text-red-600">잘못된 링크입니다.</p>
+          <Link className="text-sm font-medium text-brand" to="/forgot-password">
+            다시 요청하기
+          </Link>
+        </div>
+      </AuthLayout>
     )
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">새 비밀번호 설정</h1>
+    <AuthLayout>
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">새 비밀번호 설정</h1>
+        </div>
+
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-slate-700" htmlFor="new_password">
+              새 비밀번호
+            </label>
+            <input
+              id="new_password"
+              type="password"
+              autoComplete="new-password"
+              className="rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none"
+              {...register('new_password')}
+            />
+            {errors.new_password && <p className="text-sm text-red-600">{errors.new_password.message}</p>}
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-slate-700" htmlFor="new_password_confirm">
+              새 비밀번호 확인
+            </label>
+            <input
+              id="new_password_confirm"
+              type="password"
+              autoComplete="new-password"
+              className="rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none"
+              {...register('new_password_confirm')}
+            />
+            {errors.new_password_confirm && (
+              <p className="text-sm text-red-600">{errors.new_password_confirm.message}</p>
+            )}
+          </div>
+
+          {serverError && <p className="text-sm text-red-600">{serverError}</p>}
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="rounded-xl bg-brand py-2.5 text-sm font-semibold text-white transition hover:bg-brand-hover disabled:opacity-50"
+          >
+            비밀번호 재설정
+          </button>
+        </form>
       </div>
-
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-700" htmlFor="new_password">
-            새 비밀번호
-          </label>
-          <input
-            id="new_password"
-            type="password"
-            autoComplete="new-password"
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
-            {...register('new_password')}
-          />
-          {errors.new_password && <p className="text-sm text-red-600">{errors.new_password.message}</p>}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-700" htmlFor="new_password_confirm">
-            새 비밀번호 확인
-          </label>
-          <input
-            id="new_password_confirm"
-            type="password"
-            autoComplete="new-password"
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand focus:outline-none"
-            {...register('new_password_confirm')}
-          />
-          {errors.new_password_confirm && (
-            <p className="text-sm text-red-600">{errors.new_password_confirm.message}</p>
-          )}
-        </div>
-
-        {serverError && <p className="text-sm text-red-600">{serverError}</p>}
-
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="rounded-xl bg-brand py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
-        >
-          비밀번호 재설정
-        </button>
-      </form>
-    </div>
+    </AuthLayout>
   )
 }

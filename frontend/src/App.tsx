@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
 import { AuthProvider } from './features/auth/AuthContext'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
@@ -14,7 +14,6 @@ import { VerifyEmailPage } from './pages/auth/VerifyEmailPage'
 import { BillingFailPage } from './pages/billing/BillingFailPage'
 import { BillingSuccessPage } from './pages/billing/BillingSuccessPage'
 import { NotificationsPage } from './pages/NotificationsPage'
-import { PricingPage } from './pages/PricingPage'
 import { SchedulePage } from './pages/SchedulePage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SignupPage } from './pages/auth/SignupPage'
@@ -48,7 +47,7 @@ export default function App() {
                 <Route path="/stats" element={<StatsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/pricing" element={<Navigate to="/settings?tab=pricing" replace />} />
               </Route>
             </Route>
           </Routes>

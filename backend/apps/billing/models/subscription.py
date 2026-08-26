@@ -16,12 +16,13 @@ class Subscription(models.Model):
 
     class Plan(models.TextChoices):
         FREE = "free", "무료"
-        PREMIUM = "premium", "프리미엄"
+        BASIC = "basic", "베이직"
+        PRO = "pro", "프로"
 
     class Status(models.TextChoices):
-        # ACTIVE: 무료거나, 프리미엄이면 다음 결제 예정일에 자동 갱신됨.
+        # ACTIVE: 무료거나, 유료 플랜(베이직/프로)이면 다음 결제 예정일에 자동 갱신됨.
         ACTIVE = "active", "활성"
-        # CANCELED: 해지 신청함 — current_period_end까지는 프리미엄 유지, 그 이후
+        # CANCELED: 해지 신청함 — current_period_end까지는 지금 플랜 유지, 그 이후
         # 스케줄러가 무료로 되돌린다(services/subscription.py의 renew_due_subscriptions).
         CANCELED = "canceled", "해지 예정"
 
@@ -38,7 +39,7 @@ class Subscription(models.Model):
     customer_key = models.CharField(max_length=64, unique=True, default=_generate_customer_key)
     billing_key = models.CharField(max_length=200, blank=True)
 
-    # 프리미엄이면 다음 결제 예정일, 해지 예정이면 프리미엄이 끝나는 날짜.
+    # 유료 플랜이면 다음 결제 예정일, 해지 예정이면 지금 플랜이 끝나는 날짜.
     current_period_end = models.DateField(null=True, blank=True)
     canceled_at = models.DateTimeField(null=True, blank=True)
 

@@ -8,6 +8,7 @@ import type { ExpiryItem, ExpiryItemPayload } from '../features/items/api'
 import { BILLING_CYCLE_OPTIONS, CATEGORY_OPTIONS, NOTIFY_DAYS_PRESETS } from '../features/items/constants'
 import { formatAmount } from '../features/items/format'
 import { useCreateItemMutation, useItemQuery, useUpdateItemMutation } from '../features/items/hooks'
+import { extractErrorMessage } from '../lib/api'
 
 const inputStyle =
   'rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none'
@@ -142,8 +143,8 @@ export function ItemFormPage() {
       }
       const saved = await createItem.mutateAsync(payload)
       setCreatedItem(saved)
-    } catch {
-      setServerError('저장에 실패했습니다. 입력 값을 확인해주세요.')
+    } catch (error) {
+      setServerError(extractErrorMessage(error, '저장에 실패했습니다. 입력 값을 확인해주세요.'))
     }
   }
 

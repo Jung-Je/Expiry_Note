@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { AuthLayout } from '../../components/layout/AuthLayout'
 import { verifyEmail } from '../../features/auth/api'
 
 export function VerifyEmailPage() {
@@ -22,26 +23,28 @@ export function VerifyEmailPage() {
   }, [uid, token])
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 px-4 text-center">
-      {status === 'pending' && <p className="text-sm text-slate-500">이메일 인증을 확인하는 중...</p>}
+    <AuthLayout>
+      <div className="flex flex-col items-center gap-4 text-center">
+        {status === 'pending' && <p className="text-sm text-slate-500">이메일 인증을 확인하는 중...</p>}
 
-      {status === 'success' && (
-        <>
-          <p className="text-sm text-emerald-600">이메일 인증이 완료되었습니다.</p>
-          <Link className="text-sm font-medium text-brand" to="/login">
-            로그인하러 가기
-          </Link>
-        </>
-      )}
+        {status === 'success' && (
+          <>
+            <p className="text-sm text-emerald-600">이메일 인증이 완료되었습니다.</p>
+            <Link className="text-sm font-medium text-brand" to="/login">
+              로그인하러 가기
+            </Link>
+          </>
+        )}
 
-      {status === 'error' && (
-        <>
-          <p className="text-sm text-red-600">유효하지 않거나 만료된 인증 링크입니다.</p>
-          <Link className="text-sm font-medium text-brand" to="/login">
-            로그인으로 돌아가기
-          </Link>
-        </>
-      )}
-    </div>
+        {status === 'error' && (
+          <>
+            <p className="text-sm text-red-600">유효하지 않거나 만료된 인증 링크입니다.</p>
+            <Link className="text-sm font-medium text-brand" to="/login">
+              로그인으로 돌아가기
+            </Link>
+          </>
+        )}
+      </div>
+    </AuthLayout>
   )
 }

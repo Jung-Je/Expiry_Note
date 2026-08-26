@@ -1,5 +1,7 @@
 from rest_framework import generics
+from rest_framework.exceptions import ValidationError
 
+from apps.billing.services import describe_item_limit
 from apps.items.models import ExpiryItem
 from apps.items.serializers import ExpiryItemSerializer
 from apps.items.services import filter_items
@@ -18,6 +20,9 @@ class ExpiryItemListCreateView(generics.ListCreateAPIView):
         )
 
     def perform_create(self, serializer):
+        limit, message = describe_item_limit(self.request.user)
+        if limit is not None and ExpiryItem.objects.filter(user=self.request.user).count() >= limit:
+            raise ValidationError(message)
         serializer.save(user=self.request.user)
 
 

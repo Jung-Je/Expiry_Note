@@ -26,13 +26,6 @@ export const STATUS_BADGE_STYLES: Record<ItemStatus, string> = {
   normal: 'bg-emerald-100 text-emerald-700',
 }
 
-export const STATUS_BORDER_STYLES: Record<ItemStatus, string> = {
-  expired: 'border-slate-300',
-  urgent: 'border-red-400',
-  upcoming: 'border-amber-400',
-  normal: 'border-emerald-400',
-}
-
 export function categoryLabel(category: ItemCategory): string {
   return CATEGORY_OPTIONS.find((option) => option.value === category)?.label ?? category
 }

@@ -5,8 +5,13 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
+from apps.billing.models import Subscription
+from apps.billing.services import PLAN_ITEM_LIMIT
 from apps.items.models import ExpiryItem
 from apps.items.services import filter_items
+
+FREE_PLAN_ITEM_LIMIT = PLAN_ITEM_LIMIT[Subscription.Plan.FREE]
+BASIC_PLAN_ITEM_LIMIT = PLAN_ITEM_LIMIT[Subscription.Plan.BASIC]
 
 
 def _make_item(user, *, title="test", days_from_today=0, **kwargs):
@@ -175,3 +180,58 @@ class TestExpiryItemAPI:
         assert response.status_code == 200
         item.refresh_from_db()
         assert item.is_cancelled is True
+
+
+class TestFreePlanItemLimit:
+    @pytest.mark.django_db
+    def test_free_plan_blocks_creation_past_limit(self, client, user):
+        for i in range(FREE_PLAN_ITEM_LIMIT):
+            _make_item(user, title=f"item-{i}")
+
+        response = client.post(
+            "/api/v1/items/",
+            {"title": "one too many", "category": "subscription", "expiry_date": "2026-09-01"},
+        )
+
+        assert response.status_code == 400
+        assert ExpiryItem.objects.filter(user=user).count() == FREE_PLAN_ITEM_LIMIT
+        assert "베이직" in response.data[0]
+
+    @pytest.mark.django_db
+    def test_basic_plan_blocks_creation_past_its_limit(self, client, user):
+        Subscription.objects.create(user=user, plan=Subscription.Plan.BASIC)
+        for i in range(BASIC_PLAN_ITEM_LIMIT):
+            _make_item(user, title=f"item-{i}")
+
+        response = client.post(
+            "/api/v1/items/",
+            {"title": "one too many", "category": "subscription", "expiry_date": "2026-09-01"},
+        )
+
+        assert response.status_code == 400
+        assert "프로" in response.data[0]
+
+    @pytest.mark.django_db
+    def test_free_plan_allows_creation_under_limit(self, client, user):
+        for i in range(FREE_PLAN_ITEM_LIMIT - 1):
+            _make_item(user, title=f"item-{i}")
+
+        response = client.post(
+            "/api/v1/items/",
+            {"title": "last one", "category": "subscription", "expiry_date": "2026-09-01"},
+        )
+
+        assert response.status_code == 201
+
+    @pytest.mark.django_db
+    def test_pro_plan_has_no_limit(self, client, user):
+        Subscription.objects.create(user=user, plan=Subscription.Plan.PRO)
+        for i in range(FREE_PLAN_ITEM_LIMIT):
+            _make_item(user, title=f"item-{i}")
+
+        response = client.post(
+            "/api/v1/items/",
+            {"title": "beyond free limit", "category": "subscription", "expiry_date": "2026-09-01"},
+        )
+
+        assert response.status_code == 201

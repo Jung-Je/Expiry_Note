@@ -1,6 +1,7 @@
 import { api } from '../../lib/api'
 
-export type Plan = 'free' | 'premium'
+export type Plan = 'free' | 'basic' | 'pro'
+export type PaidPlan = 'basic' | 'pro'
 export type SubscriptionStatus = 'active' | 'canceled'
 
 export interface Subscription {
@@ -8,6 +9,8 @@ export interface Subscription {
   status: SubscriptionStatus
   customer_key: string
   current_period_end: string | null
+  item_count: number
+  item_limit: number | null
 }
 
 export type PaymentStatus = 'succeeded' | 'failed'
@@ -26,8 +29,16 @@ export async function getSubscription(): Promise<Subscription> {
   return data
 }
 
-export async function subscribe(authKey: string): Promise<Subscription> {
-  const { data } = await api.post<Subscription>('/billing/subscribe/', { auth_key: authKey })
+export async function subscribe(authKey: string, plan: PaidPlan): Promise<Subscription> {
+  const { data } = await api.post<Subscription>('/billing/subscribe/', {
+    auth_key: authKey,
+    plan,
+  })
+  return data
+}
+
+export async function changePlan(plan: PaidPlan): Promise<Subscription> {
+  const { data } = await api.post<Subscription>('/billing/change-plan/', { plan })
   return data
 }
 

@@ -60,3 +60,16 @@ api.interceptors.response.use(
     return api(original)
   },
 )
+
+// 필드에 안 묶인 채로(perform_create 등에서) raise된 DRF ValidationError는
+// 응답 바디가 `["메시지"]` 형태의 평범한 배열로 온다 — 그 메시지를 그대로
+// 사용자에게 보여줄 수 있을 때만 꺼내고, 그 외(필드별 에러 등)엔 fallback을 쓴다.
+export function extractErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError(error)) {
+    const data: unknown = error.response?.data
+    if (Array.isArray(data) && typeof data[0] === 'string') {
+      return data[0]
+    }
+  }
+  return fallback
+}

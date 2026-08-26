@@ -1,12 +1,20 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { Toggle } from '../components/ui/Toggle'
 import * as authApi from '../features/auth/api'
 import { useAuth } from '../features/auth/useAuth'
+import type { PaidPlan, Payment, Plan } from '../features/billing/api'
+import {
+  useCancelSubscriptionMutation,
+  useChangePlanMutation,
+  usePaymentsQuery,
+  useSubscriptionQuery,
+} from '../features/billing/hooks'
+import { startCardRegistration } from '../features/billing/toss'
 import {
   useNotificationPreferenceQuery,
   useUpdateNotificationPreferenceMutation,
@@ -376,17 +384,254 @@ function InquiryTab() {
   )
 }
 
-type TabKey = 'profile' | 'security' | 'notifications' | 'inquiry'
+function PaymentStatusBadge({ status }: { status: Payment['status'] }) {
+  if (status === 'succeeded') {
+    return <span className="text-emerald-600">결제 완료</span>
+  }
+  return <span className="text-red-600">결제 실패</span>
+}
+
+function PaymentHistorySection() {
+  const { data: payments, isLoading } = usePaymentsQuery()
+
+  if (isLoading || !payments || payments.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="mt-8">
+      <h3 className="text-sm font-semibold text-slate-900">결제 내역</h3>
+      <div className="mt-3 overflow-x-auto rounded-xl border border-slate-100">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 text-slate-500">
+              <th className="px-4 py-2 font-medium">결제일</th>
+              <th className="px-4 py-2 font-medium">금액</th>
+              <th className="px-4 py-2 font-medium">상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            {payments.map((payment) => (
+              <tr key={payment.id} className="border-b border-slate-50 last:border-0">
+                <td className="px-4 py-2 text-slate-600">
+                  {(payment.paid_at ?? payment.created_at).slice(0, 10)}
+                </td>
+                <td className="px-4 py-2 text-slate-600">{payment.amount.toLocaleString()}원</td>
+                <td className="px-4 py-2">
+                  <PaymentStatusBadge status={payment.status} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// 가격/항목 제한은 백엔드 apps/billing/services/subscription.py의
+// PLAN_MONTHLY_AMOUNT/PLAN_ITEM_LIMIT과 값을 맞춘 화면용 카피 — 별도
+// "플랜 카탈로그" API가 없어서 각자 하드코딩하는 지금 구조에서는 여기가
+// 유일한 프론트 쪽 소스다. 값을 바꾸면 반드시 백엔드도 같이 바꿀 것.
+const PLAN_CARDS: {
+  key: Plan
+  name: string
+  priceLabel: string
+  features: string[]
+}[] = [
+  { key: 'free', name: '무료', priceLabel: '0원', features: ['항목 최대 5개', '만료 임박 알림', '캘린더/통계 보기'] },
+  {
+    key: 'basic',
+    name: '베이직',
+    priceLabel: '월 4,900원',
+    features: ['항목 최대 15개', '만료 임박 알림', '캘린더/통계 보기', '월간 결제 · 언제든 해지'],
+  },
+  {
+    key: 'pro',
+    name: '프로',
+    priceLabel: '월 9,900원',
+    features: ['항목 무제한', '만료 임박 알림', '캘린더/통계 보기', '월간 결제 · 언제든 해지'],
+  },
+]
+
+function PricingTab() {
+  const { user } = useAuth()
+  const { data: subscription, isLoading } = useSubscriptionQuery()
+  const changePlan = useChangePlanMutation()
+  const cancelSubscription = useCancelSubscriptionMutation()
+  const [isRedirecting, setIsRedirecting] = useState(false)
+  const [isConfirmingCancel, setIsConfirmingCancel] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const currentPlan = subscription?.plan ?? 'free'
+  const isPaid = currentPlan !== 'free'
+  const isCanceling = subscription?.status === 'canceled'
+
+  async function handleSubscribe(plan: PaidPlan) {
+    if (!subscription) return
+    setError(null)
+    setIsRedirecting(true)
+    try {
+      await startCardRegistration({
+        customerKey: subscription.customer_key,
+        plan,
+        customerEmail: user?.email,
+        customerName: user?.name,
+      })
+    } catch {
+      setError('결제창을 여는 데 실패했습니다. 잠시 후 다시 시도해주세요.')
+      setIsRedirecting(false)
+    }
+  }
+
+  async function handleChangePlan(plan: PaidPlan) {
+    setError(null)
+    try {
+      await changePlan.mutateAsync(plan)
+    } catch {
+      setError('플랜 변경에 실패했습니다. 잠시 후 다시 시도해주세요.')
+    }
+  }
+
+  async function handleCancel() {
+    setIsConfirmingCancel(false)
+    setError(null)
+    try {
+      await cancelSubscription.mutateAsync()
+    } catch {
+      setError('해지에 실패했습니다. 잠시 후 다시 시도해주세요.')
+    }
+  }
+
+  if (isLoading) {
+    return <p className="text-sm text-slate-500">불러오는 중...</p>
+  }
+
+  return (
+    <div>
+      <h2 className="text-base font-semibold text-slate-900">요금제</h2>
+      <p className="mt-1 text-sm text-slate-500">사용 규모에 맞는 플랜을 선택하세요.</p>
+
+      {isPaid && (
+        <div className="mt-4 rounded-xl bg-brand-light px-4 py-3 text-sm text-brand">
+          {isCanceling
+            ? `해지 예약됨 — ${subscription?.current_period_end}까지 현재 플랜이 유지됩니다.`
+            : `다음 결제일: ${subscription?.current_period_end}`}
+        </div>
+      )}
+
+      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-3">
+        {PLAN_CARDS.map((card) => {
+          const isCurrent = card.key === currentPlan
+          const isDark = card.key !== 'free'
+
+          return (
+            <div
+              key={card.key}
+              className={
+                isDark
+                  ? `rounded-2xl border-2 bg-sidebar p-5 ${isCurrent ? 'border-brand' : 'border-transparent'}`
+                  : 'rounded-2xl border border-slate-200 bg-white p-5'
+              }
+            >
+              <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {card.name}
+              </h3>
+              <p className={`mt-1 text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {card.priceLabel}
+              </p>
+              <ul className={`mt-4 flex flex-col gap-2 text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                {card.features.map((feature) => (
+                  <li key={feature}>· {feature}</li>
+                ))}
+              </ul>
+
+              <div className="mt-4">
+                {isCurrent ? (
+                  isCanceling ? (
+                    <p
+                      className={`rounded-xl px-3 py-2 text-center text-sm font-medium ${
+                        isDark ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
+                      해지 예약됨
+                    </p>
+                  ) : card.key === 'free' ? (
+                    <p className="rounded-xl bg-brand-light px-3 py-2 text-center text-sm font-medium text-brand">
+                      현재 플랜
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmingCancel(true)}
+                      disabled={cancelSubscription.isPending}
+                      className="w-full rounded-xl border border-red-400/40 px-4 py-2 text-sm font-medium text-red-300 transition hover:bg-red-400/10 disabled:opacity-50"
+                    >
+                      구독 해지
+                    </button>
+                  )
+                ) : card.key === 'free' ? null : !isPaid ? (
+                  <button
+                    type="button"
+                    onClick={() => handleSubscribe(card.key)}
+                    disabled={isRedirecting}
+                    className="w-full rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
+                  >
+                    {isRedirecting ? '이동 중...' : '시작하기'}
+                  </button>
+                ) : (
+                  !isCanceling && (
+                    <button
+                      type="button"
+                      onClick={() => handleChangePlan(card.key)}
+                      disabled={changePlan.isPending}
+                      className="w-full rounded-xl border border-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
+                    >
+                      이 플랜으로 변경
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <PaymentHistorySection />
+
+      {isConfirmingCancel && (
+        <ConfirmDialog
+          title="구독을 해지할까요?"
+          description="이번 결제 주기가 끝날 때까지는 현재 플랜이 유지됩니다."
+          confirmLabel="해지"
+          onCancel={() => setIsConfirmingCancel(false)}
+          onConfirm={handleCancel}
+        />
+      )}
+    </div>
+  )
+}
+
+type TabKey = 'profile' | 'security' | 'notifications' | 'inquiry' | 'pricing'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'profile', label: '프로필' },
   { key: 'notifications', label: '알림' },
   { key: 'inquiry', label: '문의' },
+  { key: 'pricing', label: '요금제' },
   { key: 'security', label: '보안' },
 ]
 
+function isTabKey(value: string | null): value is TabKey {
+  return TABS.some((tab) => tab.key === value)
+}
+
 export function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<TabKey>('profile')
+  const [searchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState<TabKey>(isTabKey(tabParam) ? tabParam : 'profile')
 
   return (
     <div>
@@ -409,18 +654,13 @@ export function SettingsPage() {
               {tab.label}
             </button>
           ))}
-          <Link
-            to="/pricing"
-            className="rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-600 transition hover:bg-slate-50"
-          >
-            요금제
-          </Link>
         </nav>
 
         <div className="flex-1 rounded-2xl bg-white p-6 shadow-sm shadow-slate-200/70">
           {activeTab === 'profile' && <ProfileTab />}
           {activeTab === 'notifications' && <NotificationsTab />}
           {activeTab === 'inquiry' && <InquiryTab />}
+          {activeTab === 'pricing' && <PricingTab />}
           {activeTab === 'security' && <SecurityTab />}
         </div>
       </div>
