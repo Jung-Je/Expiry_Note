@@ -26,12 +26,23 @@ export function ItemDetailPage() {
   const deleteItem = useDeleteItemMutation()
   const setItemCancelled = useSetItemCancelledMutation()
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   async function handleDelete() {
     if (!id) return
     setIsConfirmingDelete(false)
     await deleteItem.mutateAsync(id)
     navigate('/', { replace: true })
+  }
+
+  async function handleToggleCancelled() {
+    if (!item) return
+    setActionError(null)
+    try {
+      await setItemCancelled.mutateAsync({ id: item.id, is_cancelled: !item.is_cancelled })
+    } catch {
+      setActionError('처리에 실패했습니다. 잠시 후 다시 시도해주세요.')
+    }
   }
 
   if (isLoading) {
@@ -143,6 +154,8 @@ export function ItemDetailPage() {
             {item.memo || <span className="text-slate-400">등록된 메모가 없습니다.</span>}
           </p>
 
+          {actionError && <p className="mt-4 text-sm text-red-600">{actionError}</p>}
+
           <div className="mt-6 flex items-center gap-3">
             <button
               type="button"
@@ -161,7 +174,7 @@ export function ItemDetailPage() {
               </Link>
               <button
                 type="button"
-                onClick={() => setItemCancelled.mutate({ id: item.id, is_cancelled: !item.is_cancelled })}
+                onClick={handleToggleCancelled}
                 disabled={setItemCancelled.isPending}
                 className={`rounded-xl px-4 py-2 text-sm font-medium transition disabled:opacity-50 ${
                   item.is_cancelled
