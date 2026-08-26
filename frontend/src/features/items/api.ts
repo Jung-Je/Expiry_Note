@@ -2,6 +2,7 @@ import { api } from '../../lib/api'
 
 export type ItemCategory = 'subscription' | 'contract' | 'warranty' | 'membership' | 'insurance' | 'other'
 export type ItemStatus = 'expired' | 'urgent' | 'upcoming' | 'normal'
+export type BillingCycle = 'one_time' | 'monthly' | 'yearly'
 
 export interface ExpiryItem {
   id: number
@@ -11,6 +12,10 @@ export interface ExpiryItem {
   amount: number | null
   memo: string
   notify_days_before: number
+  billing_cycle: BillingCycle
+  contract_end_date: string | null
+  cancel_url: string
+  is_cancelled: boolean
   days_until_expiry: number
   status: ItemStatus
   created_at: string
@@ -24,6 +29,9 @@ export interface ExpiryItemPayload {
   amount: number | null
   memo: string
   notify_days_before: number
+  billing_cycle: BillingCycle
+  contract_end_date: string | null
+  cancel_url: string
 }
 
 export interface ListItemsParams {
@@ -84,6 +92,14 @@ export async function updateItem(
 
 export async function deleteItem(id: number | string): Promise<void> {
   await api.delete(`/items/${id}/`)
+}
+
+export async function setItemCancelled(
+  id: number | string,
+  is_cancelled: boolean,
+): Promise<ExpiryItem> {
+  const { data } = await api.patch<ExpiryItem>(`/items/${id}/`, { is_cancelled })
+  return data
 }
 
 export async function getItemStats(): Promise<ItemStats> {

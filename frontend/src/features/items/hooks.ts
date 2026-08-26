@@ -62,6 +62,17 @@ export function useDeleteItemMutation() {
   })
 }
 
+export function useSetItemCancelledMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, is_cancelled }: { id: string | number; is_cancelled: boolean }) =>
+      itemsApi.setItemCancelled(id, is_cancelled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['items'] })
+    },
+  })
+}
+
 export function useCalendarNotesQuery(year: number, month: number) {
   return useQuery({
     queryKey: ['items', 'calendar-notes', year, month],

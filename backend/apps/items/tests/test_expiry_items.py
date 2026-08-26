@@ -134,3 +134,44 @@ class TestExpiryItemAPI:
     def test_requires_authentication(self):
         response = APIClient().get("/api/v1/items/")
         assert response.status_code == 401
+
+    @pytest.mark.django_db
+    def test_create_item_with_contract_fields(self, client):
+        response = client.post(
+            "/api/v1/items/",
+            {
+                "title": "넷플릭스",
+                "category": "subscription",
+                "expiry_date": "2026-09-01",
+                "amount": 17000,
+                "billing_cycle": "monthly",
+                "contract_end_date": "2027-09-01",
+                "cancel_url": "https://www.netflix.com/cancelplan",
+            },
+        )
+
+        assert response.status_code == 201
+        item = ExpiryItem.objects.get()
+        assert item.billing_cycle == ExpiryItem.BillingCycle.MONTHLY
+        assert item.contract_end_date.isoformat() == "2027-09-01"
+        assert item.cancel_url == "https://www.netflix.com/cancelplan"
+        assert item.is_cancelled is False
+
+    @pytest.mark.django_db
+    def test_contract_fields_default_when_omitted(self, client, user):
+        item = _make_item(user)
+
+        assert item.billing_cycle == ExpiryItem.BillingCycle.ONE_TIME
+        assert item.contract_end_date is None
+        assert item.cancel_url == ""
+        assert item.is_cancelled is False
+
+    @pytest.mark.django_db
+    def test_mark_item_cancelled(self, client, user):
+        item = _make_item(user)
+
+        response = client.patch(f"/api/v1/items/{item.id}/", {"is_cancelled": True})
+
+        assert response.status_code == 200
+        item.refresh_from_db()
+        assert item.is_cancelled is True

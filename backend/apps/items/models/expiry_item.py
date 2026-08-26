@@ -25,6 +25,11 @@ class ExpiryItem(models.Model):
         UPCOMING = "upcoming", "예정"
         NORMAL = "normal", "여유"
 
+    class BillingCycle(models.TextChoices):
+        ONE_TIME = "one_time", "1회성"
+        MONTHLY = "monthly", "매월"
+        YEARLY = "yearly", "매년"
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -39,6 +44,18 @@ class ExpiryItem(models.Model):
     # 만료 며칠 전에 알림을 받을지. apps.notifications의 알림 생성 배치가
     # expiry_date - notify_days_before == 오늘 인 항목을 찾아 알림을 만든다.
     notify_days_before = models.PositiveSmallIntegerField(default=URGENT_WITHIN_DAYS)
+    # 결제 주기. 구독처럼 반복 결제되는 항목인지, 보증서처럼 1회성인지 구분한다.
+    billing_cycle = models.CharField(
+        max_length=20, choices=BillingCycle.choices, default=BillingCycle.ONE_TIME
+    )
+    # 계약/구독의 약정 종료일. expiry_date(다음 결제일·만료일)와 별개로,
+    # 위약금 없이 해지 가능한 시점 등을 기록하고 싶을 때 쓰는 선택 필드.
+    contract_end_date = models.DateField(null=True, blank=True)
+    # 서비스의 공식 해지/탈퇴 페이지 링크.
+    cancel_url = models.URLField(blank=True)
+    # 사용자가 해지 처리를 완료했는지. 목록/알림 로직에는 관여하지 않는
+    # 단순 체크 상태로, 상세 화면에서 "해지 완료" 버튼으로 토글한다.
+    is_cancelled = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
