@@ -1,23 +1,16 @@
 # 진행 상황
 
-마지막 업데이트: 2026-08-24 · 브랜치: `feature/initial-setup`
+마지막 업데이트: 2026-08-26 · 브랜치: `feature/initial-setup`
 
 이 문서는 지금까지 뭘 했고, 뭐가 남았고, 다음에 어디서부터 이어가면 되는지 정리한 작업 로그입니다. 기능/화면 기획은 루트 [`README.md`](../README.md)를 참고하세요.
 
-## 지금 커밋 안 된 변경사항부터 처리하세요
-
-실제 이메일 발송(Gmail SMTP) 연동이 아직 커밋 전입니다. 라이브로 검증까지 마쳤습니다. 이전 커밋들(카카오 로그인, 결제/구독 등)은 이미 파일별로 커밋됐습니다.
-
-- **`backend/config/settings/base.py`** — `EMAIL_HOST`/`EMAIL_PORT`/`EMAIL_USE_TLS`/`EMAIL_HOST_USER`/`EMAIL_HOST_PASSWORD` 설정 추가(SMTP 백엔드를 쓸 때만 실제로 쓰임, 콘솔 백엔드일 땐 무시됨). 기본값은 Gmail SMTP(`smtp.gmail.com:587`) 기준
-- **`backend/apps/accounts/services/email.py`** — 모듈 docstring을 "SMTP 연동 추후 확정"에서 실제 사용법 안내로 갱신(코드 로직 자체는 변경 없음 — 이미 Django `send_mail()`을 쓰고 있어서 `EMAIL_BACKEND` env var만 바꾸면 됐음)
-- 문서: `backend/README.md`에 Gmail SMTP 설정 방법(앱 비밀번호 발급 등) 추가
-
-기존 108개 테스트는 영향 없음(pytest-django가 테스트 중엔 항상 in-memory 백엔드로 강제 전환). Gmail 앱 비밀번호를 발급받아 로컬에서 SMTP 백엔드로 전환한 뒤, 실제 계정(회원가입 → 인증 메일, 비밀번호 재설정 메일)으로 라이브 발송·수신까지 확인함. 커밋만 하면 됩니다.
+지금까지의 작업은 전부 파일별로 커밋 완료된 상태입니다.
 
 ```bash
 bash scripts/check-all.sh   # 백엔드 포맷팅+린트+Django check, 프론트 린트까지 한 번에
 bash scripts/test.sh        # 백엔드 테스트+커버리지
 cd frontend && npm run test # 프론트 테스트
+scripts/dev.sh              # 백엔드+프론트 개발 서버를 한 번에 실행(Ctrl+C로 같이 종료, Postgres는 자동 확인/실행)
 ```
 
 ## 완료된 것
@@ -30,6 +23,7 @@ cd frontend && npm run test # 프론트 테스트
 - DB: docker-compose 컨테이너 방식을 걷어내고, 로컬에 직접 설치한 PostgreSQL(pgAdmin4로 관리)에 `expiry_note_dev`/`expiry_note_prod` 두 데이터베이스로 연결. 설정은 `DB_ENGINE`/`DB_NAME`/`DB_USER`/`DB_PASSWORD`/`DB_HOST`/`DB_PORT`/`DB_CONN_MAX_AGE` 분리형 env var를 읽음 (`DATABASE_URL` 한 줄 방식 아님).
 - 백엔드 settings: `config/settings.py` 하나였던 걸 `config/settings/{base,dev,prod}.py`로 분리. `DJANGO_ENV_FILE` 환경변수 하나로 `.envs/` 파일과 settings 모듈을 함께 선택.
 - 코드 스타일/CI: `scripts/check-all.sh` 한 줄로 백엔드(ruff format+lint+`manage.py check`)와 프론트엔드(oxlint) 전체 검증. `.github/workflows/ci.yml`이 push/PR마다 백엔드(Postgres 서비스 컨테이너 + format check + lint + Django check + pytest 커버리지)와 프론트엔드(lint + vitest) job을 병렬로 실행 — GitHub Actions에서 실제로 그린으로 통과하는 것까지 확인함(처음엔 `push: branches: [main]`으로 걸어놔서 feature 브랜치 push에 안 걸리던 버그가 있었고, 수정 후 재확인함).
+- `scripts/dev.sh`: 백엔드(Django)+프론트엔드(Vite) 개발 서버를 한 번에 실행. Postgres가 로컬에 안 떠 있으면 `brew services`로 자동 실행(이미 떠 있으면 손 안 댐, 다른 프로젝트도 같이 쓰는 상시 서비스라 스크립트 종료 시 안 내림). `set -m`으로 job control을 켜고 프로세스 그룹째로 종료시켜서, Django autoreload나 Vite의 자식 프로세스까지 Ctrl+C 한 번에 깔끔하게 정리됨(라이브로 실행/포트 해제 확인함). 기본 포트는 8001/5173(로컬 8000번을 이 프로젝트와 무관한 다른 프로세스가 이미 쓰고 있어서) — `BACKEND_PORT`/`FRONTEND_PORT`로 변경 가능.
 
 ### 백엔드 API — MVP 기능 전 영역 구현 완료
 
@@ -52,8 +46,10 @@ cd frontend && npm run test # 프론트 테스트
   - `generate_due_notifications()` 서비스 + `manage.py generate_notifications` 관리 명령어 — 매일 1회 도는 걸 전제로 만듦
 - **`apps/core`** — 헬스체크(`health/`) + `manage.py runscheduler`(알림 생성/토큰 정리/구독 갱신 스케줄러, 아래 참고)
 - **`apps/billing`** — 프리미엄 구독/결제(토스페이먼츠 자동결제, 아래 "결제/구독" 참고)
+- **`apps/support`** — 설정 화면의 "도움말 및 문의"에서 보낸 1:1 문의 저장(`POST /support/inquiries/`) + 관리자에게 알림 메일 발송(문의는 반드시 저장되어야 해서, 메일 발송 실패는 삼키고 로깅만 함)
+- **`apps/items`의 `CalendarNote`** — 일정 화면 달력에서 날짜별로 남기는 자유 메모(등록된 항목과 무관, 날짜당 1개). `GET/PUT/DELETE /items/calendar/notes/...`
 
-백엔드 테스트 108개, 커버리지 90%대.
+백엔드 테스트 126개, 커버리지 95%대.
 
 ### 인증 보안 강화 (JWT 토큰 관리)
 
@@ -103,14 +99,15 @@ cd frontend && npm run test # 프론트 테스트
 
 Vite+React+TS, 라우팅(`react-router-dom`), TanStack Query(서버 상태), React Hook Form+Zod(폼), Recharts(차트), date-fns(달력). 인증 컨텍스트(`AuthContext`)와 axios 인스턴스(`lib/api.ts`, 401 시 자동 refresh)를 기반으로 화면마다 `features/<domain>/{api.ts,hooks.ts}` 얇은 레이어를 두는 패턴을 씀.
 
-- **인증** — 로그인/회원가입/로그아웃/비밀번호 재설정(요청+확인)/이메일 인증/카카오 로그인까지 전부 연결. 비밀번호 변경·프로필 수정·회원 탈퇴는 설정 화면에 있음. 카카오 로그인은 실제 계정으로 끝까지(리다이렉트 → 코드 → 토큰 교환 → 유저 생성 → 대시보드 진입) 검증 완료 — 그 과정에서 카카오 닉네임을 못 읽어와 이름이 "카카오 사용자"로 저장되던 버그(`kakao_account.profile.nickname` 대신 `properties.nickname`에 오는 케이스를 놓침)와, 가입 경로(이메일/카카오/구글)를 구분할 `User.signup_source` 필드 부재도 같이 발견해서 고침
-- **항목(items)** — 등록/수정(`ItemFormPage`, 폼 하나로 겸용)/상세/삭제(`ItemDetailPage`) 전부 연결
-- **Dashboard** — 등록 항목 수·임박 요약 카드 + 임박 항목 목록(`GET /items/stats/`, `GET /items/?status=urgent`)
-- **Schedule** — 월별 달력, 날짜별 항목 표시, 월 이동(`GET /items/calendar/`)
-- **Stats** — 월별 결제 금액/유형별/상태별 Recharts 차트(`GET /items/stats/`) — 색상은 `dataviz` 스킬 절차 그대로 따르고 검증함
+- **인증** — 로그인/회원가입/로그아웃/비밀번호 재설정(요청+확인)/이메일 인증/카카오 로그인까지 전부 연결. 카카오 로그인은 실제 계정으로 끝까지(리다이렉트 → 코드 → 토큰 교환 → 유저 생성 → 대시보드 진입) 검증 완료 — 그 과정에서 카카오 닉네임을 못 읽어와 이름이 "카카오 사용자"로 저장되던 버그(`kakao_account.profile.nickname` 대신 `properties.nickname`에 오는 케이스를 놓침)와, 가입 경로(이메일/카카오/구글)를 구분할 `User.signup_source` 필드 부재도 같이 발견해서 고침. 로그인/회원가입은 피그마의 스플릿 히어로 레이아웃(`AuthLayout`)으로 재구성
+- **항목(items)** — 등록/수정(`ItemFormPage`, 폼 하나로 겸용)/상세/삭제(`ItemDetailPage`) 전부 연결. 항목 등록 완료 시 확인 모달(요약 + "일정 보기"/"대시보드로")을 보여줌
+- **Dashboard** — 아이콘 배지 통계 카드 3개(이번 달 예정 금액/7일 이내 만료/등록 항목, 전부 실제 데이터), 임박 항목 목록, 이번 달 미니 캘린더(일정 있는 날짜 점 표시), "이번 달 확인할 항목" 알림 카드(가장 임박한 항목 기준)
+- **Schedule** — 카드형 월별 달력 + "이번 달 일정" 사이드 목록, 카테고리 필터 칩(전체/구독/계약 등, 실제 개수), 항목 클릭 시 상세 미리보기 드로어, **날짜 클릭 시 자유 메모 추가/수정/삭제**(저장된 메모는 먼저 읽기 전용으로 보여주고 "수정"을 눌러야 편집 가능 — 빈 입력창과 헷갈리지 않게)
+- **Stats** — "지출 통계"로 재구성: 요약 카드 3개(이번 달 고정비/다음 달 예정 금액/만료된 항목), 이번 달을 강조 표시하는 월별 고정비 막대그래프, 카테고리별 지출(개수 아닌 실제 금액 기준 막대) — 색상은 `dataviz` 스킬 절차 그대로 따르고 검증함
 - **Notifications** — 전체/읽지 않음 필터, 개별·전체 읽음 처리(`GET /notifications/`, `POST .../read/`, `POST read-all/`)
-- **Settings** — 프로필 수정, 비밀번호 변경, 알림(푸시) 설정 토글, 회원 탈퇴
+- **Settings** — 탭 레이아웃(프로필/알림/문의/보안)으로 재구성. 프로필 탭엔 이름 이니셜 아바타, 보안 탭엔 비밀번호 변경 + 계정 탈퇴, 알림 탭엔 iOS 스타일 토글, 문의 탭엔 1:1 문의 작성 폼(`apps.support` 연동)
 - **결제/구독(Pricing)** — 무료/프리미엄 비교, 카드 등록(토스 결제창)/해지/결제 내역 전부 연결. 실제 테스트 계정으로 카드 등록 → 결제 → 프리미엄 전환까지 검증 완료
+- **디자인 시스템** — 피그마 "전체 UI 예시" 파일에서 실측한 값(사이드바 `#22243B`, 활성 메뉴 `#343755`, 브랜드 컬러 `#635BFF`, Noto Sans KR 폰트, 카드 radius/shadow 등)을 `index.css`의 Tailwind v4 `@theme` 토큰으로 반영. 공용 컴포넌트(`Modal`/`ConfirmDialog`/`Drawer`/`Toggle`/`SectionCard`, 인라인 SVG 아이콘 세트) 신설. 사이드바를 확인 없이 바로 실행되던 로그아웃, `window.confirm()`을 쓰던 삭제/탈퇴 확인을 전부 `ConfirmDialog`로 교체
 
 ## 남은 작업
 
@@ -119,13 +116,14 @@ Vite+React+TS, 라우팅(`react-router-dom`), TanStack Query(서버 상태), Rea
 1. **모바일 앱** — 스택 자체가 미정
 2. **배포 인프라** — 프로덕션 서버/DB 호스팅 미정. `.envs/.env.prod`는 현재 로컬 Postgres를 가리키고 있어 실제 배포 시 값 교체 필요. 배포 확정 시 rate limiting용 캐시를 Redis 등 공유 캐시로 교체하고, refresh 쿠키 `Secure` 속성이 실제로 켜지는지 확인 필요(위 "인증 보안 강화" 참고). 카카오 디벨로퍼스에도 배포 도메인을 Web 플랫폼/Redirect URI로 추가 등록해야 함. 토스페이먼츠도 사업자 등록 후 운영 키로 교체 필요(위 "결제/구독" 참고). Gmail SMTP는 사용자가 많아지면 전용 이메일 서비스로 교체 검토(위 "이메일 발송" 참고). `runscheduler` 워커도 실제로 띄워야 함(위 "알림 생성/토큰 정리/구독 갱신 스케줄러" 참고)
 3. **실제 푸시 발송(FCM/APNs)** — 모바일 스택 확정 후. 알림 생성 자체(크론 스케줄링 포함)는 이미 끝남
-4. **출시 이후로 명시적으로 미룬 것** (지금 안 해도 됨): Google 소셜 로그인, 가족 공유 기능
+4. **UI 디자인 미세 조정** — 피그마 대비 1차 반영은 끝났지만(로그인/대시보드/일정/통계/설정 전부 재구성), 세부적으로 더 다를 수 있는 화면(예: 항목 추가/상세, 알림, 요금제 등)이 남아있을 수 있음 — 발견되는 대로 계속 다듬기
+5. **출시 이후로 명시적으로 미룬 것** (지금 안 해도 됨): Google 소셜 로그인, 가족 공유 기능
 
-카카오 로그인·결제/구독·이메일 발송 포함 프론트엔드-백엔드 연동은 전부 끝났고, 실제 계정/테스트 키로 검증까지 완료됐습니다 — 위 "완료된 것" 각 절 참고.
+카카오 로그인·결제/구독·이메일 발송·문의·날짜별 메모 포함 프론트엔드-백엔드 연동은 전부 끝났고, 실제 계정/테스트 키로 검증까지 완료됐습니다 — 위 "완료된 것" 각 절 참고.
 
 ## 다음 세션에서 이어가려면
 
-1. 위 "지금 커밋 안 된 변경사항" 섹션부터 확인하고 커밋
-2. `git log --oneline -15`로 최근 커밋 히스토리 확인, `README.md`의 "개발 현황" 체크리스트로 기획 대비 위치 확인
-3. "남은 작업"이 전부 사용자 쪽 외부 결정(배포 플랫폼, 모바일 스택)이 필요한 항목들뿐이라, 다음 세션 시작할 때 어느 걸 먼저 할지 사용자에게 확인부터 하는 걸 추천
-4. 로컬 실행: `backend/README.md`, `frontend/README.md`의 "로컬 개발 환경 설정" 참고 (둘 다 `.envs/.env.dev`를 로컬에 직접 만들어야 함 — git에 없음, 카카오 로그인 테스트하려면 `VITE_KAKAO_JS_KEY`/`KAKAO_REST_API_KEY`/`KAKAO_CLIENT_SECRET`, 결제 테스트하려면 `VITE_TOSS_CLIENT_KEY`/`TOSS_CLIENT_KEY`/`TOSS_SECRET_KEY`, 실제 이메일 발송을 테스트하려면 `EMAIL_BACKEND`를 SMTP로 바꾸고 `EMAIL_HOST_USER`/`EMAIL_HOST_PASSWORD`도 필요)
+1. `git log --oneline -20`으로 최근 커밋 히스토리 확인, `README.md`의 "개발 현황" 체크리스트로 기획 대비 위치 확인
+2. "남은 작업"이 전부 사용자 쪽 외부 결정(배포 플랫폼, 모바일 스택)이거나 UI 미세 조정이라, 다음 세션 시작할 때 어느 걸 먼저 할지 사용자에게 확인부터 하는 걸 추천
+3. 로컬 실행: `scripts/dev.sh`로 백엔드+프론트를 한 번에 띄우거나, `backend/README.md`/`frontend/README.md`의 "로컬 개발 환경 설정" 참고해 따로 실행 (둘 다 `.envs/.env.dev`를 로컬에 직접 만들어야 함 — git에 없음, 카카오 로그인 테스트하려면 `VITE_KAKAO_JS_KEY`/`KAKAO_REST_API_KEY`/`KAKAO_CLIENT_SECRET`, 결제 테스트하려면 `VITE_TOSS_CLIENT_KEY`/`TOSS_CLIENT_KEY`/`TOSS_SECRET_KEY`, 실제 이메일 발송을 테스트하려면 `EMAIL_BACKEND`를 SMTP로 바꾸고 `EMAIL_HOST_USER`/`EMAIL_HOST_PASSWORD`도 필요)
+4. 피그마 원본: 루트 `README.md`의 "디자인" 절에 링크된 Figma 파일 — UI를 더 다듬을 땐 해당 화면 프레임을 직접 열어서 실측(크기/색상/여백)하고 반영하는 방식으로 진행함(대시보드/로그인/설정 작업 때 이 방식으로 정확도를 크게 높임)
