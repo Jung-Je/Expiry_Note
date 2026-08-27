@@ -74,7 +74,9 @@ def describe_item_limit(user: User) -> tuple[int | None, str]:
         if subscription.plan == Subscription.Plan.FREE
         else "프로로 업그레이드하면 무제한으로 등록할 수 있어요."
     )
-    message = f"{PLAN_LABELS[subscription.plan]} 플랜은 최대 {limit}개까지 등록할 수 있습니다. {upgrade}"
+    message = (
+        f"{PLAN_LABELS[subscription.plan]} 플랜은 최대 {limit}개까지 등록할 수 있습니다. {upgrade}"
+    )
     return limit, message
 
 

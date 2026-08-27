@@ -12,7 +12,14 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subscription
-        fields = ["plan", "status", "customer_key", "current_period_end", "item_count", "item_limit"]
+        fields = [
+            "plan",
+            "status",
+            "customer_key",
+            "current_period_end",
+            "item_count",
+            "item_limit",
+        ]
         read_only_fields = fields
 
     def get_item_count(self, obj: Subscription) -> int:
