@@ -220,7 +220,7 @@ MVP 출시를 통해 다음 경험을 확보하는 것을 목표로 합니다.
 - [x] 백엔드 개발 (MVP 기능 전 영역 구현 완료 — 진행 상황은 [`docs/progress.md`](docs/progress.md) 참고)
 - [x] 웹 프론트엔드 개발 (전 화면 백엔드 API 연동 완료 — 진행 상황은 [`docs/progress.md`](docs/progress.md) 참고)
 - [ ] 모바일 앱 개발
-- [ ] 테스트 및 배포
+- [ ] 테스트 및 배포 (백엔드 Docker 배포 준비 완료 — 절차는 [`docs/deployment.md`](docs/deployment.md) 참고. 실제 서버 배포는 아직)
 
 ## 문서
 
