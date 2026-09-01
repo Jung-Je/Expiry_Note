@@ -1,0 +1,99 @@
+# 운영 배포용 Compose 파일. 서버(예: Oracle Cloud VM)에서만 쓴다 — 로컬 개발은
+# 여전히 scripts/dev.sh + 로컬 설치 Postgres를 그대로 쓴다 (docs/progress.md 참고,
+# 이 프로젝트는 로컬 dev에서는 일부러 docker-compose를 걷어낸 이력이 있음).
+#
+# 실행 전 준비물 (서버에서 직접 만들 것, 전부 git에 없음 — docs/deployment.md 참고):
+#   - .env (이 파일과 같은 위치, docker compose가 자동으로 읽음) →
+#     DB_NAME/DB_USER/DB_PASSWORD 세 줄. db 컨테이너와 backend/scheduler가
+#     같은 값을 공유해서 쓴다.
+#   - backend/.envs/.env.prod  → backend/README.md의 .env.dev 예시를 참고해
+#     운영 값으로 채운 파일. DB_*/REDIS_URL은 아래 environment에서 이미
+#     넘기므로 .env.prod에는 안 넣어도 됨(넣어도 아래 값이 우선함).
+#   - Caddyfile (이 파일과 같은 위치) → Caddyfile.example을 복사해서 실제
+#     도메인/이메일로 채움.
+#
+# 실행: docker compose -f docker-compose.prod.yml up -d --build
+# 로그 확인: docker compose -f docker-compose.prod.yml logs -f backend
+# 마이그레이션은 backend 컨테이너가 시작할 때 자동으로 돈다(docker/entrypoint.sh).
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-expiry_note_prod}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.envs/.env.prod
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-expiry_note_prod}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # 알림 생성/토큰 정리/구독 갱신을 매일 도는 별도 프로세스(apps/core/
+  # management/commands/runscheduler.py) — backend와 같은 이미지를 쓰되
+  # gunicorn 대신 이 명령어로 띄운다. RUN_MIGRATIONS=false로 migrate는
+  # backend 컨테이너만 담당하게 한다.
+  scheduler:
+    build: ./backend
+    restart: unless-stopped
+    command: ["python", "manage.py", "runscheduler"]
+    env_file:
+      - ./backend/.envs/.env.prod
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-expiry_note_prod}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_URL: redis://redis:6379/0
+      RUN_MIGRATIONS: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # TLS(HTTPS) 종료 + 리버스 프록시. Caddyfile에 도메인만 적으면 Let's
+  # Encrypt 인증서를 자동으로 발급/갱신한다(nginx+certbot보다 설정이 훨씬
+  # 간단해서 선택).
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:

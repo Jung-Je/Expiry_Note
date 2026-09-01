@@ -71,6 +71,11 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # gunicorn 앞에 별도 웹서버(nginx 등) 없이도 정적 파일(주로 Django admin
+    # CSS/JS)을 직접 서빙하기 위함. 실제 배포는 이 앞단에 Caddy(TLS 종료용)를
+    # 두지만, 정적 파일은 Caddy가 아니라 Django(gunicorn) 프로세스가 서빙한다
+    # — WhiteNoise가 압축(gzip/br)과 캐시 헤더를 붙여주므로 별도 설정 불필요.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -158,6 +163,19 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = "static/"
+# `manage.py collectstatic`이 모아두는 곳(Docker 이미지 빌드 시 실행됨).
+# 로컬 dev(runserver)에서는 STATIC_ROOT를 안 쓰고 각 앱 static/에서 바로
+# 서빙하므로 collectstatic을 따로 돌릴 필요 없음.
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
