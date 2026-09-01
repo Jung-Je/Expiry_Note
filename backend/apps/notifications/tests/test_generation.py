@@ -78,6 +78,15 @@ class TestGenerateDueNotifications:
         assert Notification.objects.count() == 1
 
     @pytest.mark.django_db
+    def test_skips_cancelled_items(self, user):
+        _make_item(user, days_from_today=7, notify_days_before=7, is_cancelled=True)
+
+        created = generate_due_notifications(today=TODAY)
+
+        assert created == []
+        assert Notification.objects.count() == 0
+
+    @pytest.mark.django_db
     def test_classifies_subscription_as_payment_and_contract_as_expiry(self, user):
         subscription = _make_item(
             user,

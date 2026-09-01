@@ -1,17 +1,10 @@
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import type { Subscription } from '../../features/billing/api'
 import { useSubscriptionQuery } from '../../features/billing/hooks'
 import { useAuth } from '../../features/auth/useAuth'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
-import {
-  BellIcon,
-  CalendarIcon,
-  ChartIcon,
-  GearIcon,
-  HomeIcon,
-  PlusCircleIcon,
-  TagIcon,
-} from '../icons'
+import { BellIcon, CalendarIcon, ChartIcon, GearIcon, HomeIcon, PlusCircleIcon } from '../icons'
 
 const NAV_ITEMS = [
   { to: '/', label: '대시보드', icon: HomeIcon },
@@ -20,8 +13,19 @@ const NAV_ITEMS = [
   { to: '/stats', label: '통계', icon: ChartIcon },
   { to: '/notifications', label: '알림', icon: BellIcon },
   { to: '/settings', label: '설정', icon: GearIcon },
-  { to: '/pricing', label: '요금제', icon: TagIcon },
 ]
+
+const PLAN_LABELS: Record<Subscription['plan'], string> = {
+  free: '무료 플랜',
+  basic: '베이직',
+  pro: '프로',
+}
+
+function planUsageLabel(subscription: Subscription | undefined): string {
+  if (!subscription) return '무료 플랜 사용 중'
+  if (subscription.item_limit == null) return `${PLAN_LABELS[subscription.plan]} · 무제한 사용`
+  return `${PLAN_LABELS[subscription.plan]} · ${subscription.item_count}/${subscription.item_limit}개 사용`
+}
 
 export function AppLayout() {
   const { user, logout } = useAuth()
@@ -56,9 +60,7 @@ export function AppLayout() {
         </nav>
         <div className="mt-auto flex flex-col gap-1 border-t border-white/10 pt-4 text-sm">
           <span className="font-medium text-white">{user?.name}님</span>
-          <span className="text-xs text-slate-500">
-            {subscription?.plan === 'premium' ? '프리미엄 구독 중' : '무료 플랜 사용 중'}
-          </span>
+          <span className="text-xs text-slate-500">{planUsageLabel(subscription)}</span>
           <button
             type="button"
             onClick={() => setIsConfirmingLogout(true)}

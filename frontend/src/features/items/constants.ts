@@ -1,4 +1,4 @@
-import type { ItemCategory, ItemStatus } from './api'
+import type { BillingCycle, ItemCategory, ItemStatus } from './api'
 
 // 백엔드 ExpiryItem.Category 선택지와 순서/값을 맞춘다 (backend/apps/items/models/expiry_item.py).
 export const CATEGORY_OPTIONS: { value: ItemCategory; label: string }[] = [
@@ -26,16 +26,28 @@ export const STATUS_BADGE_STYLES: Record<ItemStatus, string> = {
   normal: 'bg-emerald-100 text-emerald-700',
 }
 
-export const STATUS_BORDER_STYLES: Record<ItemStatus, string> = {
-  expired: 'border-slate-300',
-  urgent: 'border-red-400',
-  upcoming: 'border-amber-400',
-  normal: 'border-emerald-400',
-}
-
 export function categoryLabel(category: ItemCategory): string {
   return CATEGORY_OPTIONS.find((option) => option.value === category)?.label ?? category
 }
+
+// 백엔드 ExpiryItem.BillingCycle 선택지와 순서/값을 맞춘다.
+export const BILLING_CYCLE_OPTIONS: { value: BillingCycle; label: string }[] = [
+  { value: 'one_time', label: '1회성' },
+  { value: 'monthly', label: '매월' },
+  { value: 'yearly', label: '매년' },
+]
+
+export function billingCycleLabel(cycle: BillingCycle): string {
+  return BILLING_CYCLE_OPTIONS.find((option) => option.value === cycle)?.label ?? cycle
+}
+
+// "알림 시점" 칩 선택지. notify_days_before(0~365)는 임의 값을 허용하지만,
+// Figma 디자인은 자주 쓰는 세 값만 칩으로 고른다.
+export const NOTIFY_DAYS_PRESETS: { value: number; label: string }[] = [
+  { value: 7, label: '7일 전' },
+  { value: 3, label: '3일 전' },
+  { value: 0, label: '당일' },
+]
 
 // 항목 이니셜 아바타 배경/글자색 — 카테고리별로 고정 배정한다(같은 카테고리는
 // 항상 같은 색이 되도록. 목록/대시보드가 서로 다른 색을 매길 위험을 없앤다).

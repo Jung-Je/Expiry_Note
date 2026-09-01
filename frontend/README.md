@@ -38,7 +38,7 @@ Vite + React + TypeScript 기반 SPA입니다. 백엔드(Django + DRF)와는 완
    # 경로를 "카카오 로그인 > Redirect URI"로도 등록해둬야 로컬에서 동작한다.
    VITE_KAKAO_JS_KEY=<카카오 JavaScript 키>
 
-   # 프리미엄 구독 결제(토스페이먼츠 자동결제)용 클라이언트 키. 개발자센터
+   # 유료 플랜(베이직/프로) 구독 결제(토스페이먼츠 자동결제)용 클라이언트 키. 개발자센터
    # > 내 개발자센터 > API 키의 "API 개별 연동 키" 클라이언트 키를 쓴다 —
    # "결제위젯 연동 키"는 자동결제 API를 지원하지 않으니 주의. 시크릿
    # 키는 절대 여기 넣지 않는다(백엔드 backend/.envs/.env.dev 전용).
@@ -85,21 +85,27 @@ src/
 │   │   ├── ProtectedRoute.tsx
 │   │   ├── tokenStorage.ts
 │   │   └── kakao.ts             # 카카오 JS SDK 로드 + Auth.authorize() 트리거
-│   ├── items/                  # 만료 항목 CRUD, 통계, 캘린더 API/훅
+│   ├── items/                  # 만료 항목 CRUD, 통계, 캘린더/날짜별 메모 API/훅
 │   │   ├── api.ts
-│   │   ├── constants.ts          # 카테고리/상태 라벨·배지 스타일
+│   │   ├── constants.ts          # 카테고리/상태/결제 주기/알림 시점 라벨·배지 스타일
 │   │   ├── format.ts             # 금액/D-day 포맷
 │   │   └── hooks.ts
 │   ├── notifications/          # 인앱 알림·알림 설정 API/훅
 │   │   ├── api.ts
 │   │   └── hooks.ts
-│   └── billing/                # 구독/결제(토스페이먼츠 자동결제) API/훅
+│   ├── support/                # 설정 > 문의 탭 1:1 문의 API/훅
+│   │   ├── api.ts
+│   │   └── hooks.ts
+│   └── billing/                # 요금제 구독/결제(토스페이먼츠 자동결제) API/훅
 │       ├── api.ts
 │       ├── hooks.ts
 │       └── toss.ts               # 토스 SDK 로드 + requestBillingAuth() 트리거
 ├── components/
-│   └── layout/
-│       └── AppLayout.tsx      # 로그인 후 공통 사이드바 셸
+│   ├── icons.tsx               # 인라인 SVG 아이콘 세트
+│   ├── layout/
+│   │   ├── AppLayout.tsx        # 로그인 후 공통 사이드바 셸
+│   │   └── AuthLayout.tsx       # 로그인/회원가입 등 인증 화면 스플릿 히어로 셸
+│   └── ui/                     # Modal/ConfirmDialog/Drawer/Toggle 등 공용 컴포넌트
 └── pages/                     # 화면 단위 (Figma 화면 구성 기준)
     ├── auth/
     │   ├── LoginPage.tsx
@@ -114,14 +120,13 @@ src/
     ├── ItemDetailPage.tsx
     ├── StatsPage.tsx
     ├── NotificationsPage.tsx
-    ├── SettingsPage.tsx
-    ├── PricingPage.tsx
+    ├── SettingsPage.tsx               # 프로필/알림/문의/요금제/보안 탭 (요금제는 /pricing에서 이 페이지로 통합됨)
     └── billing/
         ├── BillingSuccessPage.tsx    # 토스 카드 등록 성공 콜백(/billing/success)
         └── BillingFailPage.tsx       # 토스 카드 등록 실패 콜백(/billing/fail)
 ```
 
-로그인/회원가입/비밀번호 재설정/이메일 인증/카카오 로그인, 항목 CRUD, 대시보드, 일정, 통계, 알림, 설정, 요금제/구독 화면이 전부 백엔드 API와 연결돼 있습니다.
+로그인/회원가입/비밀번호 재설정/이메일 인증/카카오 로그인, 항목 CRUD, 대시보드, 일정, 통계, 알림, 설정(요금제/구독 포함), 문의 화면이 전부 백엔드 API와 연결돼 있습니다.
 
 ## 인증 방식
 
@@ -135,4 +140,8 @@ src/
 
 ## 구독/결제
 
-`PricingPage`의 "카드 등록하고 시작하기"는 `features/billing/toss.ts`가 토스페이먼츠 SDK를 동적으로 로드하고 `payment.requestBillingAuth()`로 카드 등록 결제창을 띄웁니다. 성공하면 `/billing/success?authKey=...`로, 실패/취소하면 `/billing/fail?code=...&message=...`로 되돌아옵니다. `BillingSuccessPage`가 그 `authKey`를 백엔드 `/billing/subscribe/`에 그대로 전달합니다 — **빌링키 교환과 결제 승인은 프론트가 하지 않습니다.** 시크릿 키가 필요한 작업이라 반드시 백엔드에서 처리해야 하기 때문입니다(`backend/apps/billing/services/toss.py`). `VITE_TOSS_CLIENT_KEY`가 없으면 구독 버튼이 에러를 띄웁니다.
+무료/베이직/프로 3단계 요금제는 `SettingsPage`의 "요금제" 탭(`/settings?tab=pricing` — 예전 `/pricing` 경로는 이 URL로 리다이렉트됨)에서 관리합니다. 플랜별 가격/항목 개수 카피는 백엔드 `apps/billing/services/subscription.py`의 `PLAN_MONTHLY_AMOUNT`/`PLAN_ITEM_LIMIT` 값을 그대로 옮겨 적은 것이라, 값을 바꾸면 프론트도 같이 바꿔야 합니다.
+
+- **신규 구독(무료 → 베이직/프로)**: 베이직·프로 카드의 "시작하기"가 `features/billing/toss.ts`로 토스페이먼츠 SDK를 동적 로드하고 `payment.requestBillingAuth()`로 카드 등록 결제창을 띄웁니다. successUrl에 어떤 플랜을 구독하려던 건지 `?plan=` 쿼리로 실어 보내고, 토스가 그 위에 `authKey`를 붙여 `/billing/success?plan=...&authKey=...`로 되돌려줍니다(실패/취소는 `/billing/fail?code=...&message=...`). `BillingSuccessPage`가 `authKey`/`plan`을 백엔드 `/billing/subscribe/`에 그대로 전달합니다 — **빌링키 교환과 결제 승인은 프론트가 하지 않습니다.** 시크릿 키가 필요한 작업이라 반드시 백엔드에서 처리해야 하기 때문입니다(`backend/apps/billing/services/toss.py`). `VITE_TOSS_CLIENT_KEY`가 없으면 구독 버튼이 에러를 띄웁니다.
+- **베이직 ↔ 프로 전환**: 이미 카드가 등록된 유료 구독자가 다른 유료 카드의 "이 플랜으로 변경"을 누르면 카드 재등록/토스 결제창 없이 백엔드 `/billing/change-plan/`을 바로 호출해 즉시 전환됩니다.
+- **해지**: "구독 해지" → 확인 다이얼로그 → `/billing/cancel/`. 이미 낸 결제 주기가 끝날 때까지는 지금 플랜이 유지됩니다.

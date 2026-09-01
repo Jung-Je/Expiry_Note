@@ -47,7 +47,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         scheduler = BlockingScheduler(timezone=settings.TIME_ZONE)
 
-        # 매일 오전 8시 — 오늘이 결제 예정일인 프리미엄 구독을 갱신 청구한다.
+        # 매일 오전 8시 — 오늘이 결제 예정일인 유료 구독을 갱신 청구한다.
         # generate_notifications보다 먼저 돌려서, 결제 실패로 무료 전환된
         # 상태가 그날의 알림 생성에도 반영되게 한다.
         scheduler.add_job(

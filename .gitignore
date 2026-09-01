@@ -23,6 +23,8 @@ htmlcov/
 **/.envs/
 **/.envs/.env.dev
 **/.envs/.env.prod
+# 서버 도메인이 담긴 실제 배포용 Caddy 설정 — Caddyfile.example만 커밋한다.
+/Caddyfile
 
 # --- Node / frontend (frontend/) ---
 node_modules/

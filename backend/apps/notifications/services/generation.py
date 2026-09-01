@@ -35,7 +35,7 @@ def generate_due_notifications(*, today: date | None = None) -> list[Notificatio
     today = today or timezone.localdate()
     created = []
 
-    for item in ExpiryItem.objects.filter(expiry_date__gte=today):
+    for item in ExpiryItem.objects.filter(expiry_date__gte=today, is_cancelled=False):
         days_until = (item.expiry_date - today).days
         if days_until != item.notify_days_before:
             continue

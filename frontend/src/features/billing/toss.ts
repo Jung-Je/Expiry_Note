@@ -37,8 +37,13 @@ function loadTossSdk(): Promise<void> {
   return sdkPromise
 }
 
-export function getBillingSuccessUrl(): string {
-  return `${window.location.origin}/billing/success`
+import type { PaidPlan } from './api'
+
+// 카드 등록 결제창이 어떤 플랜을 구독하려던 시도였는지는 토스가 몰라도 되는
+// 우리 쪽 정보라, successUrl 쿼리에 실어 보낸다 — 토스는 그 위에 자기
+// authKey/customerKey를 &로 이어붙여서 그대로 되돌려준다.
+export function getBillingSuccessUrl(plan: PaidPlan): string {
+  return `${window.location.origin}/billing/success?plan=${plan}`
 }
 
 export function getBillingFailUrl(): string {
@@ -47,6 +52,7 @@ export function getBillingFailUrl(): string {
 
 export async function startCardRegistration(options: {
   customerKey: string
+  plan: PaidPlan
   customerEmail?: string
   customerName?: string
 }): Promise<void> {
@@ -64,7 +70,7 @@ export async function startCardRegistration(options: {
   // 리다이렉트되므로 이 함수는 정상적으로는 반환되지 않는다.
   await payment.requestBillingAuth({
     method: 'CARD',
-    successUrl: getBillingSuccessUrl(),
+    successUrl: getBillingSuccessUrl(options.plan),
     failUrl: getBillingFailUrl(),
     customerEmail: options.customerEmail,
     customerName: options.customerName,
