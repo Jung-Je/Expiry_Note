@@ -14,7 +14,8 @@ import {
   usePaymentsQuery,
   useSubscriptionQuery,
 } from '../features/billing/hooks'
-import { startCardRegistration } from '../features/billing/toss'
+// TODO: 사업자 등록 완료 후 아래 import 되돌리기
+// import { startCardRegistration } from '../features/billing/toss'
 import {
   useNotificationPreferenceQuery,
   useUpdateNotificationPreferenceMutation,
@@ -455,11 +456,13 @@ const PLAN_CARDS: {
 ]
 
 function PricingTab() {
-  const { user } = useAuth()
+  // TODO: 사업자 등록 완료 후 아래 user 되돌리기 (handleSubscribe에서 사용)
+  // const { user } = useAuth()
   const { data: subscription, isLoading } = useSubscriptionQuery()
   const changePlan = useChangePlanMutation()
   const cancelSubscription = useCancelSubscriptionMutation()
-  const [isRedirecting, setIsRedirecting] = useState(false)
+  // TODO: 사업자 등록 완료 후 아래 isRedirecting 되돌리기
+  // const [isRedirecting, setIsRedirecting] = useState(false)
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -467,22 +470,23 @@ function PricingTab() {
   const isPaid = currentPlan !== 'free'
   const isCanceling = subscription?.status === 'canceled'
 
-  async function handleSubscribe(plan: PaidPlan) {
-    if (!subscription) return
-    setError(null)
-    setIsRedirecting(true)
-    try {
-      await startCardRegistration({
-        customerKey: subscription.customer_key,
-        plan,
-        customerEmail: user?.email,
-        customerName: user?.name,
-      })
-    } catch {
-      setError('결제창을 여는 데 실패했습니다. 잠시 후 다시 시도해주세요.')
-      setIsRedirecting(false)
-    }
-  }
+  // TODO: 사업자 등록 완료 후 아래 handleSubscribe 되돌리기
+  // async function handleSubscribe(plan: PaidPlan) {
+  //   if (!subscription) return
+  //   setError(null)
+  //   setIsRedirecting(true)
+  //   try {
+  //     await startCardRegistration({
+  //       customerKey: subscription.customer_key,
+  //       plan,
+  //       customerEmail: user?.email,
+  //       customerName: user?.name,
+  //     })
+  //   } catch {
+  //     setError('결제창을 여는 데 실패했습니다. 잠시 후 다시 시도해주세요.')
+  //     setIsRedirecting(false)
+  //   }
+  // }
 
   async function handleChangePlan(plan: PaidPlan) {
     setError(null)
@@ -573,13 +577,21 @@ function PricingTab() {
                     </button>
                   )
                 ) : card.key === 'free' ? null : !isPaid ? (
+                  // TODO: 사업자 등록 완료 후 아래 결제 시작 버튼으로 되돌리기
+                  // <button
+                  //   type="button"
+                  //   onClick={() => handleSubscribe(card.key)}
+                  //   disabled={isRedirecting}
+                  //   className="w-full rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
+                  // >
+                  //   {isRedirecting ? '이동 중...' : '시작하기'}
+                  // </button>
                   <button
                     type="button"
-                    onClick={() => handleSubscribe(card.key)}
-                    disabled={isRedirecting}
-                    className="w-full rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
+                    disabled
+                    className="w-full cursor-not-allowed rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white opacity-50"
                   >
-                    {isRedirecting ? '이동 중...' : '시작하기'}
+                    준비 중
                   </button>
                 ) : (
                   !isCanceling && (
