@@ -307,3 +307,32 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 # 설정 > 도움말 및 문의로 들어온 문의를 알려줄 관리자 메일함. 없으면
 # DEFAULT_FROM_EMAIL로 보낸다(운영 초기엔 같은 주소를 발신/수신 겸용으로 씀).
 SUPPORT_NOTIFY_EMAIL = env("SUPPORT_NOTIFY_EMAIL", default=DEFAULT_FROM_EMAIL)
+
+# Cache
+# "default"는 지금까지와 동일하게 LocMemCache(프로세스 로컬) — rate
+# limiting(ScopedRateThrottle)용이고, prod.py가 멀티 워커 대응을 위해
+# Redis로 덮어쓴다(워커별로 카운트가 따로 쌓이는 문제, docs/progress.md
+# "인증 엔드포인트 Rate Limiting" 참고).
+#
+# "item_stats"는 통계 API(apps.items.services.stats) 전용 캐시다. 로컬
+# dev에서도 기본값이 로컬 Redis(brew services로 띄운 것)를 가리키므로 바로
+# 쓸 수 있고, IGNORE_EXCEPTIONS=True라 Redis가 안 떠 있어도 캐시를 그냥
+# 건너뛸 뿐 앱이 죽지는 않는다(선택적 성능 최적화이지 필수 의존성이 아님).
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    },
+    "item_stats": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": env("REDIS_URL", default="redis://127.0.0.1:6379/0"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "IGNORE_EXCEPTIONS": True,
+        },
+    },
+}
+
+# 통계 API의 캐시를 끌 수 있는 스위치. 기본 켜짐 — Redis 장애 시 운영에서
+# 즉시 캐시만 우회하고 싶을 때, 또는 캐시 적용 전/후 응답 속도를 비교하고
+# 싶을 때 `DJANGO_ITEM_STATS_CACHE_ENABLED=False`로 서버를 띄우면 된다.
+ITEM_STATS_CACHE_ENABLED = env.bool("DJANGO_ITEM_STATS_CACHE_ENABLED", default=True)
