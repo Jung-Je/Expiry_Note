@@ -117,7 +117,7 @@ Vite+React+TS, 라우팅(`react-router-dom`), TanStack Query(서버 상태), Rea
 - **인증 보조 화면** — 비밀번호 찾기/재설정/이메일 인증 화면을 로그인·회원가입과 같은 `AuthLayout`(스플릿 히어로)으로 통일. 이 세 화면은 피그마에 대응하는 WEB 프레임이 없고(모바일 AUTH 04/05만 있는데, AUTH 04는 6자리 인증번호 입력 방식이라 uid+token 링크 방식인 우리 백엔드와 흐름 자체가 달라 그대로 못 씀) 일관성 차원의 리스타일임
 - **디자인 시스템** — 피그마 "전체 UI 예시" 파일에서 실측한 값(사이드바 `#22243B`, 활성 메뉴 `#343755`, 브랜드 컬러 `#635BFF`, Noto Sans KR 폰트, 카드 radius/shadow 등)을 `index.css`의 Tailwind v4 `@theme` 토큰으로 반영. 공용 컴포넌트(`Modal`/`ConfirmDialog`/`Drawer`/`Toggle`/`SectionCard`, 인라인 SVG 아이콘 세트) 신설. 사이드바를 확인 없이 바로 실행되던 로그아웃, `window.confirm()`을 쓰던 삭제/탈퇴/구독해지 확인을 전부 `ConfirmDialog`로 교체
 
-## 완료된 것 (계속) — 배포 준비 (Docker + Oracle Cloud 프리티어)
+## 완료된 것 (계속) — 배포 준비 (Docker + AWS 프리티어)
 
 배포 인프라 자체(VM/도메인)는 아직 사용자가 준비해야 하지만, 리포 쪽 배포 설정은 끝났습니다. 상세 절차는 [`docs/deployment.md`](deployment.md).
 
@@ -128,14 +128,16 @@ Vite+React+TS, 라우팅(`react-router-dom`), TanStack Query(서버 상태), Rea
 - **HTTPS 하드닝 활성화**: `SECURE_SSL_REDIRECT`/`SECURE_HSTS_*`/`SESSION_COOKIE_SECURE`/`CSRF_COOKIE_SECURE`를 `prod.py`에서 기본 켜짐으로 설정(전부 env var로 개별 오버라이드 가능) — 이전 TODO였던 "실제 배포 전 HTTPS 하드닝 켜기" 항목 해결
 - **로컬 Docker Desktop으로 전체 스택 실제 기동 검증 완료**: `db`/`redis`/`backend`/`scheduler` 컨테이너를 올려서 마이그레이션 자동 실행, `/api/v1/health/` 200 응답, 정적 파일(`/static/admin/...`) 200 응답, Redis 캐시 왕복까지 확인함(검증용 컨테이너/파일은 작업 후 정리함 — `Caddyfile`이 없어 TLS는 로컬에서 검증 못 함, 실제 도메인 확보 후 서버에서 확인 필요)
 
-**아직 안 한 것**: Oracle Cloud 계정 가입/VM 생성/도메인 연결은 사용자가 직접 해야 함(계정 생성이라 대행 불가). 이후 카카오 디벨로퍼스 도메인 등록, 토스페이먼츠 운영 키 교체는 여전히 남음(아래 "남은 작업" 참고).
+**아직 안 한 것**: AWS 계정 가입/EC2 생성/도메인 연결은 사용자가 직접 해야 함(계정 생성이라 대행 불가). 이후 카카오 디벨로퍼스 도메인 등록, 토스페이먼츠 운영 키 교체는 여전히 남음(아래 "남은 작업" 참고).
+
+**배포 플랫폼을 Oracle Cloud에서 AWS 프리티어로 변경**: 오라클 프리티어 Ampere A1(ARM) 무료 셰이프가 한국 리전에서 용량 부족(Out of Capacity)으로 자주 막히는 이슈 때문에 AWS EC2 프리티어(t2.micro/t3.micro)로 전환하기로 결정. `docker-compose.prod.yml`/`docs/deployment.md`는 처음부터 특정 클라우드에 종속된 설정이 Oracle VM 생성 절차 한 군데뿐이라 그 부분만 AWS EC2 절차(보안 그룹, 탄력적 IP 등)로 교체하면 됨 — Docker Compose 구성 자체는 변경 없음. 다만 AWS 프리티어는 Oracle의 Always Free와 달리 영구 무료가 아님 — 2025-07-15 이전 계정은 EC2 t2.micro/t3.micro 매달 750시간 12개월 무료(레거시), 그 이후 신규 가입 계정은 $200 크레딧을 6개월(또는 크레딧 소진) 동안만 쓰는 방식으로 바뀜(EC2도 이 크레딧에서 차감). 가입 시 본인 계정이 어느 쪽인지 Billing > Free Tier에서 꼭 확인 필요. 또한 프리티어 대상 인스턴스(t2.micro/t3.micro)는 **RAM이 1GB**뿐이라 5개 컨테이너를 올리기엔 Oracle보다 빠듯함(필요 시 gunicorn 워커 수를 줄이거나 스왑 추가 — `docs/deployment.md`의 "메모리가 빠듯할 때" 참고).
 
 ## 남은 작업
 
 우선순위 순서 제안:
 
 1. **모바일 앱** — 스택 자체가 미정
-2. **배포 인프라** — 리포 쪽 준비(Docker/Compose/HTTPS 하드닝/Redis 캐시)는 끝남(위 참고). 남은 건 전부 사용자가 직접 해야 하는 계정/인프라 작업: Oracle Cloud 가입 및 VM 생성, 도메인 연결, `docs/deployment.md` 절차대로 실제 배포. 오라클 프리티어 홈 리전을 한국으로 잡으면 Ampere A1(ARM) 무료 셰이프가 용량 부족(Out of Capacity)으로 자주 막히는 이슈가 있어 도쿄/오사카/싱가포르 등 여유 있는 인접 리전으로 가입하는 걸 권장(지연시간 차이는 미미). 프론트엔드는 백엔드와 별도로 Vercel/Netlify/Cloudflare Pages 등 정적 호스팅에 무료 배포(`docs/deployment.md`의 "프론트엔드는?" 참고). 그 다음 카카오 디벨로퍼스에 배포 도메인을 Web 플랫폼/Redirect URI로 추가 등록. 토스페이먼츠는 **사업자 등록 전까지는 무료 플랜만 오픈**(위 "결제/구독" 참고) — 사업자 등록 완료 후 운영 키 발급받아 교체 + 프론트 주석 되돌리기. Gmail SMTP는 사용자가 많아지면 전용 이메일 서비스로 교체 검토(위 "이메일 발송" 참고)
+2. **배포 인프라** — 리포 쪽 준비(Docker/Compose/HTTPS 하드닝/Redis 캐시)는 끝남(위 참고). 남은 건 전부 사용자가 직접 해야 하는 계정/인프라 작업: AWS 가입 및 EC2 프리티어 인스턴스 생성, 도메인 연결, `docs/deployment.md` 절차대로 실제 배포. AWS 프리티어는 가입 시점에 따라 무료 기간/방식이 다르고(위 "배포 플랫폼을 Oracle Cloud에서 AWS 프리티어로 변경" 참고) t2.micro/t3.micro는 RAM 1GB라 5개 컨테이너를 올리기엔 빠듯하니 `docs/deployment.md`의 "메모리가 빠듯할 때" 참고(gunicorn 워커 수 축소/스왑 추가). 탄력적 IP를 인스턴스에 연결해두지 않으면 재시작 때마다 공인 IP가 바뀌니 꼭 연결해둘 것. 프론트엔드는 백엔드와 별도로 Vercel/Netlify/Cloudflare Pages 등 정적 호스팅에 무료 배포(`docs/deployment.md`의 "프론트엔드는?" 참고). 그 다음 카카오 디벨로퍼스에 배포 도메인을 Web 플랫폼/Redirect URI로 추가 등록. 토스페이먼츠는 **사업자 등록 전까지는 무료 플랜만 오픈**(위 "결제/구독" 참고) — 사업자 등록 완료 후 운영 키 발급받아 교체 + 프론트 주석 되돌리기. Gmail SMTP는 사용자가 많아지면 전용 이메일 서비스로 교체 검토(위 "이메일 발송" 참고)
 3. **실제 푸시 발송(FCM/APNs)** — 모바일 스택 확정 후. 알림 생성 자체(크론 스케줄링 포함)는 이미 끝남
 4. **UI 디자인 미세 조정** — 피그마 대비 1차 반영은 끝났음(로그인/회원가입/대시보드/일정/통계/설정/요금제/항목 추가·상세/비밀번호 찾기·재설정/이메일 인증 전부 재구성 또는 확인 완료). 남은 후보:
    - **알림 목록 화면**: 피그마에 대응하는 WEB 프레임 자체가 없음(모바일 "알림 설정" 토글 화면뿐, 목록 아님) — Figma 매칭이 아니라 다른 화면과 카드/그림자/radius를 맞추는 일반 디자인 일관성 작업으로 처리해야 함. 아직 안 함
