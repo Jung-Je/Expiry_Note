@@ -21,7 +21,11 @@ CSRF_COOKIE_SECURE = env.bool("DJANGO_CSRF_COOKIE_SECURE", default=True)
 # 로컬이라 멀티 워커(gunicorn --workers 3 등)에서는 워커마다 카운트가 따로
 # 쌓여 제한이 느슨해진다 — docker-compose.prod.yml의 redis 서비스를 공유
 # 캐시로 써서 워커 전체가 같은 카운트를 본다.
+# "item_stats"는 base.py에서 이미 Redis를 가리키고 있으므로(REDIS_URL
+# env var 공유) 그대로 두고 "default"만 덮어쓴다 — CACHES를 통째로
+# 재할당하면 base.py의 "item_stats" 항목이 사라지므로 반드시 병합한다.
 CACHES = {
+    **CACHES,
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": env("REDIS_URL", default="redis://redis:6379/0"),

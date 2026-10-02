@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 
 import pytest
+from django.test import override_settings
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
@@ -8,6 +9,22 @@ from apps.items.models import ExpiryItem
 from apps.items.services.stats import get_item_stats
 
 TODAY = date(2026, 8, 21)
+
+# item_stats 캐시 동작을 검증하는 테스트는 실제 Redis 유무와 무관하게
+# 항상 같은 결과를 내야 하므로(CI에는 Redis 서비스가 없음), 이 모듈
+# 안에서만 item_stats 캐시를 LocMemCache로 덮어쓴다. get/set/delete
+# 시맨틱은 백엔드와 무관하게 동일하므로 캐싱/무효화 로직 자체를
+# 검증하는 데는 이걸로 충분하다 — 실제 운영 백엔드(Redis)는
+# config/settings/base.py 참고.
+LOCMEM_ITEM_STATS_CACHES = override_settings(
+    CACHES={
+        "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+        "item_stats": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-item-stats-cache",
+        },
+    }
+)
 
 
 def _make_item(user, *, title="test", days_from_today=0, today=TODAY, **kwargs):
@@ -137,3 +154,45 @@ class TestExpiryItemStatsAPI:
     def test_requires_authentication(self):
         response = APIClient().get("/api/v1/items/stats/")
         assert response.status_code == 401
+
+    @LOCMEM_ITEM_STATS_CACHES
+    @pytest.mark.django_db
+    def test_response_is_cached_between_requests(self, user, django_assert_num_queries):
+        _make_item(user, title="mine", amount=1000)
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        first = client.get("/api/v1/items/stats/")
+        assert first.data["total_count"] == 1
+
+        # 캐시가 실제로 쓰였다면, 캐시 적중 시 DB 쿼리가 전혀 나가지 않아야 한다.
+        with django_assert_num_queries(0):
+            second = client.get("/api/v1/items/stats/")
+        assert second.data == first.data
+
+    @LOCMEM_ITEM_STATS_CACHES
+    @pytest.mark.django_db
+    def test_cache_invalidated_on_create_update_delete(self, user):
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        assert client.get("/api/v1/items/stats/").data["total_count"] == 0
+
+        create_res = client.post(
+            "/api/v1/items/",
+            {"title": "새 항목", "expiry_date": str(date.today() + timedelta(days=10))},
+        )
+        assert create_res.status_code == 201
+        # 생성 직후 캐시가 무효화되지 않았다면 여기서 여전히 0이 나와야 한다(= 버그).
+        assert client.get("/api/v1/items/stats/").data["total_count"] == 1
+
+        item_id = create_res.data["id"]
+        update_res = client.patch(f"/api/v1/items/{item_id}/", {"amount": 5000})
+        assert update_res.status_code == 200
+        stats_after_update = client.get("/api/v1/items/stats/").data
+        total_amount = sum(row["total_amount"] for row in stats_after_update["by_category"])
+        assert total_amount == 5000
+
+        delete_res = client.delete(f"/api/v1/items/{item_id}/")
+        assert delete_res.status_code == 204
+        assert client.get("/api/v1/items/stats/").data["total_count"] == 0

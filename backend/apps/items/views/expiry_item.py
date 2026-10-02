@@ -5,6 +5,7 @@ from apps.billing.services import describe_item_limit
 from apps.items.models import ExpiryItem
 from apps.items.serializers import ExpiryItemSerializer
 from apps.items.services import filter_items
+from apps.items.services.stats import invalidate_item_stats_cache
 
 
 class ExpiryItemListCreateView(generics.ListCreateAPIView):
@@ -24,6 +25,7 @@ class ExpiryItemListCreateView(generics.ListCreateAPIView):
         if limit is not None and ExpiryItem.objects.filter(user=self.request.user).count() >= limit:
             raise ValidationError(message)
         serializer.save(user=self.request.user)
+        invalidate_item_stats_cache(self.request.user.id)
 
 
 class ExpiryItemDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -32,3 +34,11 @@ class ExpiryItemDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         # 다른 사용자의 항목은 목록에서 배제되므로 그대로 404가 된다.
         return ExpiryItem.objects.filter(user=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save()
+        invalidate_item_stats_cache(self.request.user.id)
+
+    def perform_destroy(self, instance):
+        instance.delete()
+        invalidate_item_stats_cache(self.request.user.id)
