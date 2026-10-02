@@ -1,4 +1,4 @@
-# 운영 배포용 Compose 파일. 서버(예: Oracle Cloud VM)에서만 쓴다 — 로컬 개발은
+# 운영 배포용 Compose 파일. 서버(예: AWS EC2 프리티어 VM)에서만 쓴다 — 로컬 개발은
 # 여전히 scripts/dev.sh + 로컬 설치 Postgres를 그대로 쓴다 (docs/progress.md 참고,
 # 이 프로젝트는 로컬 dev에서는 일부러 docker-compose를 걷어낸 이력이 있음).
 #

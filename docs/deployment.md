@@ -2,7 +2,9 @@
 
 이 문서는 백엔드를 실제 서버에 올릴 때 쓰는 절차입니다. 프론트엔드는 별도로 Vercel/Netlify 같은 정적 호스팅에 올리므로 이 문서에 없습니다(맨 아래 "프론트엔드는?" 참고).
 
-선택한 방식: **Oracle Cloud 프리티어(Always Free) VM + Docker Compose + Caddy**. 이유는 [`docs/progress.md`](progress.md)의 "배포 인프라" 항목 참고 — 상시 실행이 필요한 `runscheduler` 워커가 있어서, 미사용 시 슬립되는 무료 호스팅(Render 등)보다 언제나 켜져 있는 VM이 이 프로젝트에 맞습니다.
+선택한 방식: **AWS 프리티어(Free Tier) EC2 VM + Docker Compose + Caddy**. 이유는 [`docs/progress.md`](progress.md)의 "배포 인프라" 항목 참고 — 상시 실행이 필요한 `runscheduler` 워커가 있어서, 미사용 시 슬립되는 무료 호스팅(Render 등)보다 언제나 켜져 있는 VM이 이 프로젝트에 맞습니다.
+
+> **AWS 프리티어는 2025년 7월 15일부터 정책이 바뀌었습니다.** 그 이전에 만든 계정은 예전 방식(EC2 t2.micro/t3.micro를 매달 750시간씩 12개월간 무료)을 그대로 쓸 수 있지만, **그 이후 신규 가입한 계정은 가입 시 $200 크레딧을 받고, 가입 후 6개월(또는 크레딧을 다 쓰는 시점 중 더 빠른 쪽)까지만 무료**입니다 — EC2 사용량도 이 $200에서 그대로 차감되는 구조라 Oracle Cloud의 Always Free처럼 "영구 무료"가 아닙니다. 가입할 때 본인 계정이 어느 쪽인지(AWS 콘솔의 Billing > Free Tier 또는 가입 당시 안내) 꼭 확인하세요. 또한 free tier 대상 인스턴스(t2.micro/t3.micro)는 **RAM이 1GB**뿐이라, 이 프로젝트의 5개 컨테이너(Postgres+Redis+Django+scheduler+Caddy)를 전부 올리기엔 빠듯합니다 — 아래 "메모리가 빠듯할 때" 참고.
 
 ## 전체 그림
 
@@ -14,16 +16,30 @@
 
 5개 컨테이너(`docker-compose.prod.yml`)가 한 VM 위에서 돕니다: `db`(Postgres), `redis`, `backend`(gunicorn), `scheduler`(알림/구독 갱신 워커), `caddy`(HTTPS 리버스 프록시).
 
-## 1. Oracle Cloud VM 준비 (사용자가 직접)
+## 1. AWS EC2 프리티어 VM 준비 (사용자가 직접)
 
-1. [Oracle Cloud](https://www.oracle.com/cloud/free/) 가입 — 본인 확인용 카드 등록이 필요하지만, 아래에서 만들 "Always Free" 리소스 범위 안에서는 과금되지 않습니다.
-2. 인스턴스 생성 (Compute > Instances > Create Instance)
-   - Shape: Always Free 표시가 있는 것 선택(예: `VM.Standard.E2.1.Micro` 또는 Ampere `VM.Standard.A1.Flex`)
-   - 이미지: Ubuntu 최신 LTS
-   - SSH 키: 생성된 키 페어를 다운로드해서 보관(서버 접속에 필요)
-3. 네트워킹: 인스턴스가 속한 서브넷의 **보안 목록(Security List)** 또는 **네트워크 보안 그룹**에서 인바운드 규칙에 **80번, 443번 포트**를 0.0.0.0/0으로 열어둡니다(Caddy가 HTTPS 인증서를 발급/서빙하려면 필요). 22번(SSH)은 본인 IP로 좁혀두는 걸 권장.
-4. 도메인: `api.example.com` 같은 서브도메인의 DNS **A 레코드**를 이 VM의 공인 IP로 연결합니다.
-5. SSH로 접속: `ssh -i <다운로드한 키> ubuntu@<VM 공인 IP>`
+1. [AWS 가입](https://aws.amazon.com/free/) — 카드 등록 필요. 가입 직후 Billing > Free Tier 페이지에서 본인 계정이 "레거시 12개월 무료"인지 "$200 크레딧(6개월)" 방식인지 확인하고, 무료 기간/크레딧이 끝나는 시점을 캘린더에 적어두는 걸 추천(끝나면 자동으로 과금 시작).
+2. 인스턴스 생성 (EC2 > 인스턴스 시작)
+   - AMI: Ubuntu 최신 LTS
+   - 인스턴스 유형: `t2.micro` 또는 `t3.micro`(프리티어 대상, 1 vCPU / RAM 1GB)
+   - 키 페어: 새로 생성해서 `.pem` 파일 다운로드(서버 접속에 필요, 분실 시 재발급 불가라 잘 보관)
+   - 스토리지: 프리티어 한도(최대 30GB) 안에서 기본값 또는 조금 넉넉하게
+3. 보안 그룹(Security Group) 인바운드 규칙에 **80번, 443번 포트**를 0.0.0.0/0으로 열어둡니다(Caddy가 HTTPS 인증서를 발급/서빙하려면 필요). 22번(SSH)은 본인 IP로 좁혀두는 걸 권장.
+4. **탄력적 IP(Elastic IP) 할당 후 이 인스턴스에 연결** — EC2 인스턴스는 재시작(stop/start, reboot는 괜찮음)할 때마다 퍼블릭 IP가 바뀝니다. 탄력적 IP를 안 쓰면 재시작할 때마다 DNS를 다시 연결해야 합니다(프리티어 범위 안에서 인스턴스에 연결해두면 무료, 연결 안 하고 놀리면 과금되니 꼭 인스턴스에 붙여둘 것).
+5. 도메인: `api.example.com` 같은 서브도메인의 DNS **A 레코드**를 위에서 할당한 탄력적 IP로 연결합니다.
+6. SSH로 접속: `ssh -i <다운로드한 .pem 파일> ubuntu@<탄력적 IP>` (키 파일 권한은 `chmod 400 <파일>` 필요)
+
+### 메모리가 빠듯할 때
+
+`t2.micro`/`t3.micro`는 RAM이 1GB뿐이라 Postgres+Redis+Django(gunicorn)+scheduler+Caddy 5개 컨테이너를 한꺼번에 올리면 메모리가 부족해 컨테이너가 죽거나(OOM) 스왑으로 느려질 수 있습니다. 증상이 보이면:
+
+- `backend/Dockerfile`의 gunicorn `--workers 3`을 `--workers 2`나 `1`로 낮추기(워커 하나당 수십~수백MB 절약)
+- 스왑 파일 추가(가장 간단한 안전장치):
+  ```bash
+  sudo fallocate -l 1G /swapfile && sudo chmod 600 /swapfile
+  sudo mkswap /swapfile && sudo swapon /swapfile
+  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+  ```
 
 ## 2. VM에 Docker 설치
 
