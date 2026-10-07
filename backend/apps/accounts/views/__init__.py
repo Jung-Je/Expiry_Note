@@ -1,3 +1,4 @@
+from apps.accounts.views.admin import AdminUserListView
 from apps.accounts.views.auth import (
     ChangePasswordView,
     EmailVerificationConfirmView,
@@ -12,6 +13,7 @@ from apps.accounts.views.auth import (
 )
 
 __all__ = [
+    "AdminUserListView",
     "ChangePasswordView",
     "EmailVerificationConfirmView",
     "KakaoLoginView",

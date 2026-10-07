@@ -1,8 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
+import { AdminRoute } from './features/auth/AdminRoute'
 import { AuthProvider } from './features/auth/AuthContext'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
+import { AdminInquiriesPage } from './pages/admin/AdminInquiriesPage'
+import { AdminUsersPage } from './pages/admin/AdminUsersPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ItemDetailPage } from './pages/ItemDetailPage'
 import { ItemFormPage } from './pages/ItemFormPage'
@@ -48,6 +51,11 @@ export default function App() {
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/pricing" element={<Navigate to="/settings?tab=pricing" replace />} />
+
+                <Route element={<AdminRoute />}>
+                  <Route path="/admin/users" element={<AdminUsersPage />} />
+                  <Route path="/admin/inquiries" element={<AdminInquiriesPage />} />
+                </Route>
               </Route>
             </Route>
           </Routes>

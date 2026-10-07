@@ -101,3 +101,21 @@ export function TagIcon(props: IconProps) {
     </svg>
   )
 }
+
+export function UsersIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="9" cy="8" r="3.25" />
+      <path d="M3 20v-1.5A4.5 4.5 0 0 1 7.5 14h3A4.5 4.5 0 0 1 15 18.5V20" />
+      <path d="M15.5 5.2a3.25 3.25 0 0 1 0 6.1M20 20v-1.5a4.5 4.5 0 0 0-3-4.24" />
+    </svg>
+  )
+}
+
+export function MessageIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 5.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H9l-4.5 3.5V17H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z" />
+    </svg>
+  )
+}
