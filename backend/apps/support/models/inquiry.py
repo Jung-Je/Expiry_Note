@@ -20,8 +20,12 @@ class Inquiry(models.Model):
     category = models.CharField(max_length=20, choices=Category.choices)
     title = models.CharField(max_length=100)
     content = models.TextField()
-    # 관리자 화면에서 "답변완료"로 체크했는지 여부. 실제 답변은 이메일로
-    # 별도 발송하므로, 여기선 처리 상태만 추적한다.
+    # 관리자 화면에서 작성하는 답변. 유저는 설정 > 문의 화면에서 본인
+    # 문의의 이 값을 그대로 볼 수 있다(apps/support/views/inquiry.py의
+    # InquiryListCreateView). 비어있지 않으면 답변완료로 취급한다 —
+    # is_answered는 그 상태를 저장해둔 값으로, reply가 바뀔 때 같이 갱신된다
+    # (AdminInquirySerializer.update 참고).
+    reply = models.TextField(blank=True, default="")
     is_answered = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 

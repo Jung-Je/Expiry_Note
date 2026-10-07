@@ -1,21 +1,23 @@
-from rest_framework import generics, status
+from rest_framework import generics
 from rest_framework.permissions import IsAdminUser
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from apps.support.models import Inquiry
 from apps.support.serializers import AdminInquirySerializer, InquirySerializer
 from apps.support.services import create_inquiry
 
 
-class InquiryCreateView(APIView):
+class InquiryListCreateView(generics.ListCreateAPIView):
+    """유저 본인의 문의 목록 조회(GET) + 새 문의 작성(POST)."""
+
+    serializer_class = InquirySerializer
     throttle_scope = "support-inquiry"
 
-    def post(self, request):
-        serializer = InquirySerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        inquiry = create_inquiry(user=request.user, **serializer.validated_data)
-        return Response(InquirySerializer(inquiry).data, status=status.HTTP_201_CREATED)
+    def get_queryset(self):
+        return Inquiry.objects.filter(user=self.request.user).order_by("-created_at")
+
+    def perform_create(self, serializer):
+        inquiry = create_inquiry(user=self.request.user, **serializer.validated_data)
+        serializer.instance = inquiry
 
 
 class AdminInquiryListView(generics.ListAPIView):
@@ -27,7 +29,7 @@ class AdminInquiryListView(generics.ListAPIView):
 
 
 class AdminInquiryDetailView(generics.RetrieveUpdateAPIView):
-    """관리자 화면에서 문의 하나를 보고 is_answered만 바꿀 수 있는 엔드포인트."""
+    """관리자 화면에서 문의 하나를 보고 답변(reply)을 등록/수정하는 엔드포인트."""
 
     permission_classes = [IsAdminUser]
     serializer_class = AdminInquirySerializer

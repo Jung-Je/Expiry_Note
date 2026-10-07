@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { useAdminInquiriesQuery, useSetInquiryAnsweredMutation } from '../../features/admin/hooks'
+import { useAdminInquiriesQuery, useReplyToInquiryMutation } from '../../features/admin/hooks'
 import type { AdminInquiry, InquiryCategory } from '../../features/admin/api'
-import { Toggle } from '../../components/ui/Toggle'
 
 const CATEGORY_LABELS: Record<InquiryCategory, string> = {
   general: '서비스 이용',
@@ -23,7 +22,9 @@ function formatDateTime(value: string): string {
 
 function InquiryRow({ inquiry }: { inquiry: AdminInquiry }) {
   const [isOpen, setIsOpen] = useState(false)
-  const { mutate: setAnswered, isPending } = useSetInquiryAnsweredMutation()
+  const [reply, setReply] = useState(inquiry.reply)
+  const { mutate: sendReply, isPending } = useReplyToInquiryMutation()
+  const isDirty = reply !== inquiry.reply
 
   return (
     <li className="border-b border-slate-50 last:border-0">
@@ -36,6 +37,13 @@ function InquiryRow({ inquiry }: { inquiry: AdminInquiry }) {
           {CATEGORY_LABELS[inquiry.category]}
         </span>
         <span className="flex-1 truncate text-sm font-medium text-slate-900">{inquiry.title}</span>
+        <span
+          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+            inquiry.is_answered ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+          }`}
+        >
+          {inquiry.is_answered ? '답변완료' : '미답변'}
+        </span>
         <span className="shrink-0 text-xs text-slate-400">
           {inquiry.user_name} · {inquiry.user_email}
         </span>
@@ -45,15 +53,27 @@ function InquiryRow({ inquiry }: { inquiry: AdminInquiry }) {
       {isOpen && (
         <div className="border-t border-slate-50 bg-slate-50/60 px-4 py-4">
           <p className="whitespace-pre-wrap text-sm text-slate-700">{inquiry.content}</p>
-          <div className="mt-4 flex items-center gap-2.5">
-            <Toggle
-              checked={inquiry.is_answered}
-              onChange={(checked) => setAnswered({ id: inquiry.id, isAnswered: checked })}
-              label="답변완료"
+
+          <div className="mt-4 flex flex-col gap-2">
+            <label className="text-xs font-medium text-slate-500" htmlFor={`reply-${inquiry.id}`}>
+              답변
+            </label>
+            <textarea
+              id={`reply-${inquiry.id}`}
+              rows={3}
+              value={reply}
+              onChange={(e) => setReply(e.target.value)}
+              placeholder="유저가 설정 > 문의 화면에서 볼 답변을 입력하세요."
+              className="rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand"
             />
-            <span className="text-sm text-slate-600">
-              {isPending ? '저장 중...' : inquiry.is_answered ? '답변완료' : '미답변'}
-            </span>
+            <button
+              type="button"
+              disabled={!isDirty || isPending}
+              onClick={() => sendReply({ id: inquiry.id, reply })}
+              className="self-start rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
+            >
+              {isPending ? '저장 중...' : '답변 등록'}
+            </button>
           </div>
         </div>
       )}

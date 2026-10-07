@@ -20,8 +20,8 @@ import {
   useNotificationPreferenceQuery,
   useUpdateNotificationPreferenceMutation,
 } from '../features/notifications/hooks'
-import type { InquiryCategory } from '../features/support/api'
-import { useCreateInquiryMutation } from '../features/support/hooks'
+import type { Inquiry, InquiryCategory } from '../features/support/api'
+import { useCreateInquiryMutation, useMyInquiriesQuery } from '../features/support/hooks'
 
 const profileSchema = z.object({
   name: z.string().min(1, '이름을 입력하세요.').max(50),
@@ -295,6 +295,69 @@ function NotificationsTab() {
   )
 }
 
+const INQUIRY_CATEGORY_LABELS = Object.fromEntries(
+  INQUIRY_CATEGORY_OPTIONS.map((option) => [option.value, option.label]),
+) as Record<InquiryCategory, string>
+
+function formatInquiryDate(value: string): string {
+  return new Date(value).toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+}
+
+function MyInquiryCard({ inquiry }: { inquiry: Inquiry }) {
+  return (
+    <li className="rounded-xl border border-slate-100 p-4">
+      <div className="flex items-center gap-2">
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+          {INQUIRY_CATEGORY_LABELS[inquiry.category]}
+        </span>
+        <span className="text-sm font-medium text-slate-900">{inquiry.title}</span>
+        <span
+          className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${
+            inquiry.is_answered ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+          }`}
+        >
+          {inquiry.is_answered ? '답변완료' : '답변대기'}
+        </span>
+      </div>
+      <p className="mt-2 text-xs text-slate-400">{formatInquiryDate(inquiry.created_at)}</p>
+      <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">{inquiry.content}</p>
+
+      {inquiry.is_answered && (
+        <div className="mt-3 rounded-lg bg-brand-light/40 p-3">
+          <p className="text-xs font-medium text-brand">답변</p>
+          <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{inquiry.reply}</p>
+        </div>
+      )}
+    </li>
+  )
+}
+
+function MyInquiryList() {
+  const { data: inquiries, isLoading } = useMyInquiriesQuery()
+
+  if (isLoading) {
+    return <p className="mt-5 text-sm text-slate-500">불러오는 중...</p>
+  }
+  if (!inquiries || inquiries.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="mt-8 max-w-sm">
+      <h3 className="text-sm font-semibold text-slate-900">내 문의 내역</h3>
+      <ul className="mt-3 flex flex-col gap-3">
+        {inquiries.map((inquiry) => (
+          <MyInquiryCard key={inquiry.id} inquiry={inquiry} />
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function InquiryTab() {
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const createInquiry = useCreateInquiryMutation()
@@ -381,6 +444,8 @@ function InquiryTab() {
           문의 보내기
         </button>
       </form>
+
+      <MyInquiryList />
     </div>
   )
 }
