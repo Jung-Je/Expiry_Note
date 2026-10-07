@@ -15,11 +15,11 @@ export function useAdminInquiriesQuery() {
   })
 }
 
-export function useSetInquiryAnsweredMutation() {
+export function useReplyToInquiryMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, isAnswered }: { id: number; isAnswered: boolean }) =>
-      adminApi.setInquiryAnswered(id, isAnswered),
+    mutationFn: ({ id, reply }: { id: number; reply: string }) =>
+      adminApi.replyToInquiry(id, reply),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'inquiries'] })
     },

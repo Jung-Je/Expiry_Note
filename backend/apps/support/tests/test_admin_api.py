@@ -58,14 +58,30 @@ class TestAdminInquiryListAPI:
 
 class TestAdminInquiryDetailAPI:
     @pytest.mark.django_db
-    def test_staff_can_mark_as_answered(self, staff_client, inquiry):
+    def test_replying_marks_it_as_answered(self, staff_client, inquiry):
         response = staff_client.patch(
-            f"/api/v1/support/admin/inquiries/{inquiry.id}/", {"is_answered": True}
+            f"/api/v1/support/admin/inquiries/{inquiry.id}/",
+            {"reply": "확인했습니다. 곧 수정하겠습니다."},
         )
 
         assert response.status_code == 200
         inquiry.refresh_from_db()
+        assert inquiry.reply == "확인했습니다. 곧 수정하겠습니다."
         assert inquiry.is_answered is True
+
+    @pytest.mark.django_db
+    def test_clearing_reply_marks_it_as_unanswered(self, staff_client, inquiry):
+        inquiry.reply = "기존 답변"
+        inquiry.is_answered = True
+        inquiry.save()
+
+        response = staff_client.patch(
+            f"/api/v1/support/admin/inquiries/{inquiry.id}/", {"reply": ""}
+        )
+
+        assert response.status_code == 200
+        inquiry.refresh_from_db()
+        assert inquiry.is_answered is False
 
     @pytest.mark.django_db
     def test_cannot_edit_content_via_admin_endpoint(self, staff_client, inquiry):

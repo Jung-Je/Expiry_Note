@@ -20,6 +20,7 @@ export interface AdminInquiry {
   category: InquiryCategory
   title: string
   content: string
+  reply: string
   is_answered: boolean
   created_at: string
 }
@@ -36,9 +37,7 @@ export async function listInquiries(): Promise<AdminInquiry[]> {
   return data
 }
 
-export async function setInquiryAnswered(id: number, isAnswered: boolean): Promise<AdminInquiry> {
-  const { data } = await api.patch<AdminInquiry>(`/support/admin/inquiries/${id}/`, {
-    is_answered: isAnswered,
-  })
+export async function replyToInquiry(id: number, reply: string): Promise<AdminInquiry> {
+  const { data } = await api.patch<AdminInquiry>(`/support/admin/inquiries/${id}/`, { reply })
   return data
 }

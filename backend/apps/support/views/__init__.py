@@ -1,7 +1,7 @@
 from apps.support.views.inquiry import (
     AdminInquiryDetailView,
     AdminInquiryListView,
-    InquiryCreateView,
+    InquiryListCreateView,
 )
 
-__all__ = ["AdminInquiryDetailView", "AdminInquiryListView", "InquiryCreateView"]
+__all__ = ["AdminInquiryDetailView", "AdminInquiryListView", "InquiryListCreateView"]
