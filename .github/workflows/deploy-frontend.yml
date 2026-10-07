@@ -1,0 +1,56 @@
+name: Deploy frontend
+
+# main에 push(= PR merge)될 때 frontend/** 변경이 있으면, GitHub Actions
+# 러너에서 프론트를 빌드(vite build --mode prod)한 뒤 그 결과물(dist/)만
+# scp로 EC2에 올린다. 서버(1GB RAM)에서 직접 vite build를 돌리지 않는 이유는
+# docker-compose.prod.yml 상단 주석 참고. Caddy는 파일을 그때그때 디스크에서
+# 읽으므로(file_server) 이 워크플로는 서버 쪽 컨테이너 재시작이 필요 없다.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-frontend.yml"
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # vite.config.ts가 envDir: './.envs'라 `--mode prod`일 때
+      # frontend/.envs/.env.prod를 읽는다. 이 파일은 git에 없으므로
+      # (.gitignore) 빌드 직전에 GitHub Secrets로 즉석에서 만든다.
+      - name: Write .envs/.env.prod
+        working-directory: frontend
+        run: |
+          mkdir -p .envs
+          cat <<EOF > .envs/.env.prod
+          VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
+          VITE_KAKAO_JS_KEY=${{ secrets.VITE_KAKAO_JS_KEY }}
+          EOF
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: dist/를 EC2로 복사
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "frontend/dist/*"
+          target: "~/expiry-note/frontend/dist"
+          strip_components: 2
