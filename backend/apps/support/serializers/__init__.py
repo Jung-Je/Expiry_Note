@@ -1,3 +1,3 @@
-from apps.support.serializers.inquiry import InquirySerializer
+from apps.support.serializers.inquiry import AdminInquirySerializer, InquirySerializer
 
-__all__ = ["InquirySerializer"]
+__all__ = ["AdminInquirySerializer", "InquirySerializer"]

@@ -6,6 +6,7 @@ export interface User {
   id: number
   email: string
   name: string
+  is_staff: boolean
   is_email_verified: boolean
   signup_source: SignupSource
   date_joined: string

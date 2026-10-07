@@ -1,3 +1,4 @@
+from apps.accounts.serializers.admin import AdminUserSerializer
 from apps.accounts.serializers.auth import (
     ChangePasswordSerializer,
     EmailVerificationConfirmSerializer,
@@ -15,6 +16,7 @@ from apps.accounts.serializers.token import (
 )
 
 __all__ = [
+    "AdminUserSerializer",
     "ChangePasswordSerializer",
     "CookieTokenRefreshSerializer",
     "EmailTokenObtainPairSerializer",

@@ -4,7 +4,16 @@ import type { Subscription } from '../../features/billing/api'
 import { useSubscriptionQuery } from '../../features/billing/hooks'
 import { useAuth } from '../../features/auth/useAuth'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
-import { BellIcon, CalendarIcon, ChartIcon, GearIcon, HomeIcon, PlusCircleIcon } from '../icons'
+import {
+  BellIcon,
+  CalendarIcon,
+  ChartIcon,
+  GearIcon,
+  HomeIcon,
+  MessageIcon,
+  PlusCircleIcon,
+  UsersIcon,
+} from '../icons'
 
 const NAV_ITEMS = [
   { to: '/', label: '대시보드', icon: HomeIcon },
@@ -13,6 +22,11 @@ const NAV_ITEMS = [
   { to: '/stats', label: '통계', icon: ChartIcon },
   { to: '/notifications', label: '알림', icon: BellIcon },
   { to: '/settings', label: '설정', icon: GearIcon },
+]
+
+const ADMIN_NAV_ITEMS = [
+  { to: '/admin/users', label: '회원 관리', icon: UsersIcon },
+  { to: '/admin/inquiries', label: '문의 관리', icon: MessageIcon },
 ]
 
 const PLAN_LABELS: Record<Subscription['plan'], string> = {
@@ -58,6 +72,29 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
+
+        {user?.is_staff && (
+          <nav className="mt-4 flex flex-col gap-1 border-t border-white/10 pt-4">
+            <p className="px-3 pb-1 text-[11px] font-semibold tracking-wide text-slate-500">관리자</p>
+            {ADMIN_NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                    isActive
+                      ? 'bg-sidebar-active text-white'
+                      : 'text-slate-400 hover:bg-sidebar-active/50 hover:text-slate-200'
+                  }`
+                }
+              >
+                <item.icon className="shrink-0" />
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+        )}
+
         <div className="mt-auto flex flex-col gap-1 border-t border-white/10 pt-4 text-sm">
           <span className="font-medium text-white">{user?.name}님</span>
           <span className="text-xs text-slate-500">{planUsageLabel(subscription)}</span>
