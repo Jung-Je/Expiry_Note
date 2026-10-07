@@ -2,6 +2,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
+from apps.notifications.models import Notification
 from apps.support.models import Inquiry
 
 
@@ -68,6 +69,28 @@ class TestAdminInquiryDetailAPI:
         inquiry.refresh_from_db()
         assert inquiry.reply == "확인했습니다. 곧 수정하겠습니다."
         assert inquiry.is_answered is True
+
+    @pytest.mark.django_db
+    def test_replying_creates_a_notification_for_the_asker(self, staff_client, inquiry, asker):
+        staff_client.patch(
+            f"/api/v1/support/admin/inquiries/{inquiry.id}/", {"reply": "답변입니다."}
+        )
+
+        notification = Notification.objects.get()
+        assert notification.user == asker
+        assert notification.inquiry == inquiry
+        assert notification.type == Notification.Type.INQUIRY_REPLY
+
+    @pytest.mark.django_db
+    def test_editing_an_already_answered_reply_does_not_duplicate_notification(
+        self, staff_client, inquiry
+    ):
+        staff_client.patch(f"/api/v1/support/admin/inquiries/{inquiry.id}/", {"reply": "1차 답변"})
+        staff_client.patch(
+            f"/api/v1/support/admin/inquiries/{inquiry.id}/", {"reply": "수정된 답변"}
+        )
+
+        assert Notification.objects.count() == 1
 
     @pytest.mark.django_db
     def test_clearing_reply_marks_it_as_unanswered(self, staff_client, inquiry):

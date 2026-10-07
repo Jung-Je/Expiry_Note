@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from apps.support.models import Inquiry
+from apps.support.services import notify_inquiry_answered
 
 
 class InquirySerializer(serializers.ModelSerializer):
@@ -49,8 +50,13 @@ class AdminInquirySerializer(serializers.ModelSerializer):
         ]
 
     def update(self, instance: Inquiry, validated_data: dict) -> Inquiry:
+        was_answered = instance.is_answered
         if "reply" in validated_data:
             instance.reply = validated_data["reply"]
             instance.is_answered = bool(instance.reply.strip())
         instance.save()
+        # 미답변 -> 답변완료로 처음 바뀔 때만 알림을 보낸다. 이미 답변한
+        # 문의의 reply를 다시 고쳐도(오타 수정 등) 알림이 또 가지 않는다.
+        if instance.is_answered and not was_answered:
+            notify_inquiry_answered(instance)
         return instance
