@@ -10,3 +10,13 @@
 api.example.com {
 	reverse_proxy backend:8000
 }
+
+# 프론트 정적 파일(SPA). docker-compose.prod.yml이 ./frontend/dist를
+# /srv/frontend로 마운트해준다(파일 자체는 deploy-frontend.yml이 빌드해서
+# scp로 서버에 올림). try_files로 없는 경로는 index.html로 보내서
+# react-router 클라이언트 라우팅이 동작하게 한다.
+example.com {
+	root * /srv/frontend
+	file_server
+	try_files {path} /index.html
+}

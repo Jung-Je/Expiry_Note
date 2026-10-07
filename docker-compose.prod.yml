@@ -12,6 +12,11 @@
 #   - Caddyfile (이 파일과 같은 위치) → Caddyfile.example을 복사해서 실제
 #     도메인/이메일로 채움.
 #
+#   - frontend/dist/ → 프론트 정적 빌드 산출물. 1GB RAM 서버에서 직접
+#     vite build를 돌리면 부담되므로, GitHub Actions 러너에서 빌드한 뒤
+#     deploy-frontend.yml이 scp로 이 경로에 복사한다. 최초엔 비어 있어도
+#     됨(디렉터리만 있으면 Caddy가 404로 응답할 뿐 컨테이너는 정상 기동).
+#
 # 실행: docker compose -f docker-compose.prod.yml up -d --build
 # 로그 확인: docker compose -f docker-compose.prod.yml logs -f backend
 # 마이그레이션은 backend 컨테이너가 시작할 때 자동으로 돈다(docker/entrypoint.sh).
@@ -87,6 +92,7 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./frontend/dist:/srv/frontend:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
