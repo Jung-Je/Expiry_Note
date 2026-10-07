@@ -530,6 +530,12 @@ function PricingTab() {
         {PLAN_CARDS.map((card) => {
           const isCurrent = card.key === currentPlan
           const isDark = card.key !== 'free'
+          // card.key(Plan)를 'free' 체크 삼항식 안에서 바로 쓰면, 그 체크가
+          // onClick 클로저 안까지는 좁혀지지 않아(TS는 프로퍼티 접근의 타입
+          // 좁히기를 함수 경계 너머로 유지하지 않음) PaidPlan을 기대하는
+          // handleChangePlan에 Plan을 넘기는 타입 에러가 난다. const 변수는
+          // 클로저 너머까지 좁혀지므로, 여기서 한 번 좁혀서 재사용한다.
+          const paidKey: PaidPlan | null = card.key === 'free' ? null : card.key
 
           return (
             <div
@@ -576,11 +582,11 @@ function PricingTab() {
                       구독 해지
                     </button>
                   )
-                ) : card.key === 'free' ? null : !isPaid ? (
+                ) : paidKey === null ? null : !isPaid ? (
                   // TODO: 사업자 등록 완료 후 아래 결제 시작 버튼으로 되돌리기
                   // <button
                   //   type="button"
-                  //   onClick={() => handleSubscribe(card.key)}
+                  //   onClick={() => handleSubscribe(paidKey)}
                   //   disabled={isRedirecting}
                   //   className="w-full rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
                   // >
@@ -597,7 +603,7 @@ function PricingTab() {
                   !isCanceling && (
                     <button
                       type="button"
-                      onClick={() => handleChangePlan(card.key)}
+                      onClick={() => handleChangePlan(paidKey)}
                       disabled={changePlan.isPending}
                       className="w-full rounded-xl border border-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
                     >
