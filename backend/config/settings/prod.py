@@ -4,6 +4,13 @@ from .base import *  # noqa: F401,F403
 
 DEBUG = False
 
+# Caddy가 TLS를 종료하고 backend로는 평문 HTTP로 넘긴다 — Django가 "원래
+# 요청이 HTTPS였다"는 걸 Caddy가 보내주는 X-Forwarded-Proto 헤더로 판단하게
+# 하지 않으면, SECURE_SSL_REDIRECT가 매 요청을 계속 안전하지 않다고 보고
+# https://로 리다이렉트 → Caddy를 거쳐 다시 HTTP로 들어옴 → 또 리다이렉트…
+# 무한 루프(ERR_TOO_MANY_REDIRECTS)에 빠진다. 이 한 줄이 그걸 막는다.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 # HTTPS 하드닝. `uv run python manage.py check --deploy`가 안내해주는 항목들.
 # 기본값은 켜짐(실제 배포는 항상 HTTPS 뒤에 있음) — Docker Compose로 로컬에서
 # http로 이 설정을 테스트해야 한다면 DJANGO_SECURE_SSL_REDIRECT=False 등으로
