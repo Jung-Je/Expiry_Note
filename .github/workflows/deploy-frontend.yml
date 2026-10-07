@@ -45,6 +45,9 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      # overwrite: true가 없으면 서버에 같은 이름의 파일이 이미 있을 때
+      # 덮어쓰지 않고 건너뛴다 — index.html처럼 매 빌드 동일한 파일명을
+      # 쓰는 파일은 영영 최신화가 안 되는 버그가 생겨서 명시적으로 켠다.
       - name: dist/를 EC2로 복사
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -54,3 +57,4 @@ jobs:
           source: "frontend/dist/*"
           target: "~/expiry-note/frontend/dist"
           strip_components: 2
+          overwrite: true
