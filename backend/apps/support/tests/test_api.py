@@ -1,5 +1,7 @@
 import pytest
+from django.core.cache import cache
 from rest_framework.test import APIClient
+from rest_framework.throttling import ScopedRateThrottle
 
 from apps.accounts.models import User
 from apps.support.models import Inquiry
@@ -58,6 +60,29 @@ class TestInquiryCreateAPI:
 
 
 class TestInquiryListAPI:
+    @pytest.mark.django_db
+    def test_listing_is_not_subject_to_the_post_rate_limit(self, client, monkeypatch):
+        # support-inquiry 스팸 방지 rate는 POST(새 문의 작성)에만 걸려야
+        # 한다 — 설정 > 문의 탭을 여러 번 열어도(GET) 막히면 안 된다.
+        cache.clear()
+        monkeypatch.setattr(ScopedRateThrottle, "THROTTLE_RATES", {"support-inquiry": "1/hour"})
+
+        for _ in range(5):
+            response = client.get("/api/v1/support/inquiries/")
+            assert response.status_code == 200
+
+    @pytest.mark.django_db
+    def test_creating_is_still_rate_limited(self, client, monkeypatch):
+        cache.clear()
+        monkeypatch.setattr(ScopedRateThrottle, "THROTTLE_RATES", {"support-inquiry": "1/hour"})
+        payload = {"category": "bug", "title": "제목", "content": "내용"}
+
+        first = client.post("/api/v1/support/inquiries/", payload)
+        assert first.status_code == 201
+
+        throttled = client.post("/api/v1/support/inquiries/", payload)
+        assert throttled.status_code == 429
+
     @pytest.mark.django_db
     def test_lists_only_the_current_user_s_inquiries(self, client, user):
         other_user = User.objects.create_user(
