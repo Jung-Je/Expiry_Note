@@ -10,6 +10,14 @@ import {
 const TYPE_LABELS: Record<Notification['type'], string> = {
   expiry: '만료 예정',
   payment: '결제 예정',
+  inquiry_reply: '문의 답변',
+}
+
+function notificationLinkTo(notification: Notification): string {
+  if (notification.type === 'inquiry_reply') {
+    return '/settings?tab=inquiry'
+  }
+  return `/items/${notification.item}`
 }
 
 export function NotificationsPage() {
@@ -74,7 +82,7 @@ export function NotificationsPage() {
               }`}
             >
               <div className="flex items-start justify-between gap-4">
-                <Link to={`/items/${notification.item}`} className="min-w-0 flex-1">
+                <Link to={notificationLinkTo(notification)} className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                       {TYPE_LABELS[notification.type]}
@@ -85,7 +93,9 @@ export function NotificationsPage() {
                   </div>
                   <p className="mt-1 text-sm font-medium text-slate-900">{notification.title}</p>
                   <p className="mt-0.5 text-sm text-slate-500">{notification.message}</p>
-                  <p className="mt-1 text-xs text-slate-400">{notification.for_date}</p>
+                  {notification.for_date && (
+                    <p className="mt-1 text-xs text-slate-400">{notification.for_date}</p>
+                  )}
                 </Link>
                 {!notification.is_read && (
                   <button
