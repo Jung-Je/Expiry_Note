@@ -42,6 +42,10 @@ class Subscription(models.Model):
     # 유료 플랜이면 다음 결제 예정일, 해지 예정이면 지금 플랜이 끝나는 날짜.
     current_period_end = models.DateField(null=True, blank=True)
     canceled_at = models.DateTimeField(null=True, blank=True)
+    # 관리자가 결제 없이 부여한 플랜인지. True면 자동 결제 대상에서 빠지고,
+    # current_period_end는 "이 날짜까지 유지"(비어 있으면 기간 제한 없음)라는
+    # 뜻이 된다 — services/subscription.py의 grant_plan 참고.
+    is_admin_granted = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

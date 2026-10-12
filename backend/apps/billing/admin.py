@@ -5,8 +5,15 @@ from apps.billing.models import Payment, Subscription
 
 @admin.register(Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
-    list_display = ["user", "plan", "status", "current_period_end", "updated_at"]
-    list_filter = ["plan", "status"]
+    list_display = [
+        "user",
+        "plan",
+        "status",
+        "is_admin_granted",
+        "current_period_end",
+        "updated_at",
+    ]
+    list_filter = ["plan", "status", "is_admin_granted"]
     search_fields = ["user__email", "customer_key"]
 
 

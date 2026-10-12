@@ -9,6 +9,9 @@ export interface Subscription {
   status: SubscriptionStatus
   customer_key: string
   current_period_end: string | null
+  // 관리자가 결제 없이 부여한 플랜. current_period_end는 유지되는 마지막 날
+  // (null이면 기간 제한 없음)이고, 직접 변경·해지할 수 없다.
+  is_admin_granted: boolean
   item_count: number
   item_limit: number | null
 }

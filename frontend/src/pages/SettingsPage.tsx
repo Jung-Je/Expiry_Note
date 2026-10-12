@@ -534,6 +534,7 @@ function PricingTab() {
   const currentPlan = subscription?.plan ?? 'free'
   const isPaid = currentPlan !== 'free'
   const isCanceling = subscription?.status === 'canceled'
+  const isAdminGranted = subscription?.is_admin_granted ?? false
 
   // TODO: 사업자 등록 완료 후 아래 handleSubscribe 되돌리기
   // async function handleSubscribe(plan: PaidPlan) {
@@ -583,7 +584,11 @@ function PricingTab() {
 
       {isPaid && (
         <div className="mt-4 rounded-xl bg-brand-light px-4 py-3 text-sm text-brand">
-          {isCanceling
+          {isAdminGranted
+            ? subscription?.current_period_end
+              ? `관리자가 부여한 플랜입니다 — ${subscription.current_period_end}까지 이용할 수 있습니다.`
+              : '관리자가 부여한 플랜입니다 — 기간 제한 없이 이용할 수 있습니다.'
+            : isCanceling
             ? `해지 예약됨 — ${subscription?.current_period_end}까지 현재 플랜이 유지됩니다.`
             : `다음 결제일: ${subscription?.current_period_end}`}
         </div>
@@ -633,7 +638,8 @@ function PricingTab() {
                     >
                       해지 예약됨
                     </p>
-                  ) : card.key === 'free' ? (
+                  ) : card.key === 'free' || isAdminGranted ? (
+                    // 관리자가 부여한 플랜은 결제 주기가 없어 해지 버튼을 두지 않는다.
                     <p className="rounded-xl bg-brand-light px-3 py-2 text-center text-sm font-medium text-brand">
                       현재 플랜
                     </p>
@@ -665,7 +671,8 @@ function PricingTab() {
                     준비 중
                   </button>
                 ) : (
-                  !isCanceling && (
+                  !isCanceling &&
+                  !isAdminGranted && (
                     <button
                       type="button"
                       onClick={() => handleChangePlan(paidKey)}

@@ -1,11 +1,15 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.models import User
 from apps.billing.models import Payment
 from apps.billing.serializers import (
+    AdminGrantPlanSerializer,
     AdminPaymentSerializer,
+    AdminSubscriptionSerializer,
     ChangePlanSerializer,
     PaymentSerializer,
     StartSubscriptionSerializer,
@@ -16,6 +20,7 @@ from apps.billing.services import (
     cancel_subscription,
     change_plan,
     get_or_create_subscription,
+    grant_plan,
     start_subscription,
 )
 
@@ -79,3 +84,24 @@ class AdminPaymentListView(generics.ListAPIView):
     permission_classes = [IsAdminUser]
     serializer_class = AdminPaymentSerializer
     queryset = Payment.objects.select_related("subscription__user").all()
+
+
+class AdminUserSubscriptionView(APIView):
+    """관리자가 결제 없이 특정 유저의 플랜을 바꾼다(무료로 내리기 포함).
+    스태프 계정만 접근 가능."""
+
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, user_id: int):
+        user = get_object_or_404(User, pk=user_id)
+        serializer = AdminGrantPlanSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            subscription = grant_plan(
+                user,
+                plan=serializer.validated_data["plan"],
+                period_end=serializer.validated_data.get("period_end"),
+            )
+        except SubscriptionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(AdminSubscriptionSerializer(subscription).data)
