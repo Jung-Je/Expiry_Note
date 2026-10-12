@@ -1,5 +1,6 @@
 from apps.accounts.services.email_verification import InvalidVerificationToken, verify_email
 from apps.accounts.services.kakao import (
+    InactiveKakaoUser,
     InvalidKakaoCode,
     InvalidKakaoToken,
     exchange_kakao_code,
@@ -15,6 +16,7 @@ from apps.accounts.services.signup import signup
 from apps.accounts.services.withdraw import withdraw
 
 __all__ = [
+    "InactiveKakaoUser",
     "InvalidCurrentPassword",
     "InvalidKakaoCode",
     "InvalidKakaoToken",
