@@ -126,3 +126,44 @@ class TestDateFilterOnListEndpoint:
 
         assert response.status_code == 200
         assert [item["title"] for item in response.data] == ["a"]
+
+    @pytest.mark.django_db
+    def test_nonexistent_date_is_ignored_not_an_error(self, user):
+        # 형식은 맞지만 없는 날짜 — parse_date가 ValueError를 던지는 경우.
+        _make_item(user, title="a", expiry_date=date(2026, 8, 5))
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        response = client.get("/api/v1/items/", {"date": "2026-13-45"})
+
+        assert response.status_code == 200
+        assert [item["title"] for item in response.data] == ["a"]
+
+
+class TestMonthFilterOnListEndpoint:
+    @pytest.mark.django_db
+    def test_filters_items_by_month(self, user):
+        _make_item(user, title="first day", expiry_date=date(2026, 8, 1))
+        _make_item(user, title="last day", expiry_date=date(2026, 8, 31))
+        _make_item(user, title="previous month", expiry_date=date(2026, 7, 31))
+        _make_item(user, title="next month", expiry_date=date(2026, 9, 1))
+        _make_item(user, title="same month other year", expiry_date=date(2027, 8, 15))
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        response = client.get("/api/v1/items/", {"month": "2026-08"})
+
+        assert response.status_code == 200
+        assert [item["title"] for item in response.data] == ["first day", "last day"]
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize("month", ["not-a-month", "2026-13", "2026"])
+    def test_invalid_month_is_ignored_not_an_error(self, user, month):
+        _make_item(user, title="a", expiry_date=date(2026, 8, 5))
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        response = client.get("/api/v1/items/", {"month": month})
+
+        assert response.status_code == 200
+        assert [item["title"] for item in response.data] == ["a"]

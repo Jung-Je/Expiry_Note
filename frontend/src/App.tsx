@@ -18,6 +18,7 @@ import { ResetPasswordPage } from './pages/auth/ResetPasswordPage'
 import { VerifyEmailPage } from './pages/auth/VerifyEmailPage'
 import { BillingFailPage } from './pages/billing/BillingFailPage'
 import { BillingSuccessPage } from './pages/billing/BillingSuccessPage'
+import { ItemsPage } from './pages/ItemsPage'
 import { NotificationsPage } from './pages/NotificationsPage'
 import { SchedulePage } from './pages/SchedulePage'
 import { SettingsPage } from './pages/SettingsPage'
@@ -46,6 +47,7 @@ export default function App() {
               <Route element={<AppLayout />}>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/schedule" element={<SchedulePage />} />
+                <Route path="/items" element={<ItemsPage />} />
                 <Route path="/items/new" element={<ItemFormPage />} />
                 <Route path="/items/:id" element={<ItemDetailPage />} />
                 <Route path="/items/:id/edit" element={<ItemFormPage />} />

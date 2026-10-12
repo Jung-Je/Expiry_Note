@@ -18,6 +18,7 @@ class ExpiryItemListCreateView(generics.ListCreateAPIView):
             status=self.request.query_params.get("status"),
             search=self.request.query_params.get("search"),
             date=self.request.query_params.get("date"),
+            month=self.request.query_params.get("month"),
         )
 
     def perform_create(self, serializer):
