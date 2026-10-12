@@ -1,6 +1,6 @@
 # 배포 가이드 (백엔드)
 
-이 문서는 백엔드를 실제 서버에 올릴 때 쓰는 절차입니다. 프론트엔드는 별도로 Vercel/Netlify 같은 정적 호스팅에 올리므로 이 문서에 없습니다(맨 아래 "프론트엔드는?" 참고).
+이 문서는 백엔드를 실제 서버에 올릴 때 쓰는 절차입니다. 프론트엔드는 같은 서버의 Caddy가 정적 파일로 서빙합니다(맨 아래 "프론트엔드는?" 참고).
 
 선택한 방식: **AWS 프리티어(Free Tier) EC2 VM + Docker Compose + Caddy**. 이유는 [`docs/progress.md`](progress.md)의 "배포 인프라" 항목 참고 — 상시 실행이 필요한 `runscheduler` 워커가 있어서, 미사용 시 슬립되는 무료 호스팅(Render 등)보다 언제나 켜져 있는 VM이 이 프로젝트에 맞습니다.
 
@@ -113,4 +113,9 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 ## 프론트엔드는?
 
-Vite+React 정적 빌드라 Vercel/Netlify/Cloudflare Pages 같은 정적 호스팅에 올립니다(무료). 빌드 시 `VITE_API_BASE_URL`을 이 문서에서 만든 백엔드 도메인 기준으로 설정하면 됩니다(`https://api.example.com/api/v1` — `/api/v1`까지 포함) — 자세한 값은 [`frontend/README.md`](../frontend/README.md) 참고.
+Vite+React 정적 빌드를 같은 서버의 Caddy가 직접 서빙합니다(프론트 컨테이너는 없음). `docker-compose.prod.yml`이 `./frontend/dist`를 Caddy 컨테이너의 `/srv/frontend`로 마운트하고, `Caddyfile`의 루트 도메인 블록이 `try_files {path} /index.html`로 SPA 라우팅을 처리합니다(`Caddyfile.example` 참고).
+
+- **빌드와 업로드는 자동**: `main`에 `frontend/**` 변경이 들어가면 `.github/workflows/deploy-frontend.yml`이 GitHub 러너에서 빌드해 `dist/`를 서버로 scp합니다(1GB 서버에서 빌드하지 않기 위함). `appleboy/scp-action`은 `overwrite: true`가 없으면 이미 있는 파일을 조용히 건너뛰어 옛 번들이 남으니 지우지 말 것
+- **빌드 환경 변수**: `VITE_API_BASE_URL`(`https://api.example.com/api/v1` — `/api/v1`까지 포함), `VITE_KAKAO_JS_KEY`는 GitHub Secrets에 등록 — 자세한 값은 [`frontend/README.md`](../frontend/README.md) 참고
+- **Vercel/Cloudflare Pages를 쓰지 않는 이유**: 현재 도메인(`웹.한국` 하위 한글 IDN)을 두 서비스 모두 등록 가능한 도메인으로 인식하지 못해 연결할 수 없었음. 일반 `.com`/`.kr` 도메인이라면 정적 호스팅도 가능
+- **한글 도메인 주의**: 브라우저는 퓨니코드로 요청하므로 `backend/.envs/.env.prod`의 `ALLOWED_HOSTS`/`CORS_ALLOWED_ORIGINS`에 한글 표기와 퓨니코드 표기를 둘 다 넣어야 함

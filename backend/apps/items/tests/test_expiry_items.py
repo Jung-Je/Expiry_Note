@@ -182,6 +182,59 @@ class TestExpiryItemAPI:
         assert item.is_cancelled is True
 
 
+class TestExpiryItemValidation:
+    @pytest.mark.django_db
+    @pytest.mark.parametrize("field", ["expiry_date", "contract_end_date"])
+    @pytest.mark.parametrize("value", ["0202-10-12", "1999-12-31", "2101-01-01"])
+    def test_rejects_dates_outside_reasonable_years(self, client, field, value):
+        payload = {"title": "넷플릭스", "expiry_date": "2026-11-01", field: value}
+
+        response = client.post("/api/v1/items/", payload, format="json")
+
+        assert response.status_code == 400
+        assert field in response.data
+        assert not ExpiryItem.objects.exists()
+
+    @pytest.mark.django_db
+    def test_rejects_notify_days_before_over_a_year(self, client):
+        response = client.post(
+            "/api/v1/items/",
+            {"title": "넷플릭스", "expiry_date": "2026-11-01", "notify_days_before": 366},
+            format="json",
+        )
+
+        assert response.status_code == 400
+        assert "notify_days_before" in response.data
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize("amount", [-1, 12.5])
+    def test_rejects_amount_that_is_not_a_non_negative_integer(self, client, amount):
+        response = client.post(
+            "/api/v1/items/",
+            {"title": "넷플릭스", "expiry_date": "2026-11-01", "amount": amount},
+            format="json",
+        )
+
+        assert response.status_code == 400
+        assert "amount" in response.data
+
+    @pytest.mark.django_db
+    def test_allows_contract_end_date_before_expiry_date(self, client):
+        # 약정은 이미 끝났고 월 결제만 이어지는 구독 — 정상적인 입력이다.
+        response = client.post(
+            "/api/v1/items/",
+            {
+                "title": "인터넷",
+                "expiry_date": "2026-11-01",
+                "contract_end_date": "2026-01-31",
+                "billing_cycle": "monthly",
+            },
+            format="json",
+        )
+
+        assert response.status_code == 201
+
+
 class TestFreePlanItemLimit:
     @pytest.mark.django_db
     def test_free_plan_blocks_creation_past_limit(self, client, user):
