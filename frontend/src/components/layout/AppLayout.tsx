@@ -8,6 +8,7 @@ import {
   BellIcon,
   CalendarIcon,
   ChartIcon,
+  ClipboardIcon,
   GearIcon,
   HomeIcon,
   MessageIcon,
@@ -16,8 +17,11 @@ import {
   WonIcon,
 } from '../icons'
 
+// end: true면 경로가 정확히 일치할 때만 활성 표시한다 — '/'는 모든 경로의,
+// '/items'는 '/items/new'(항목 추가)의 접두사라서 필요하다.
 const NAV_ITEMS = [
-  { to: '/', label: '대시보드', icon: HomeIcon },
+  { to: '/', label: '대시보드', icon: HomeIcon, end: true },
+  { to: '/items', label: '항목 목록', icon: ClipboardIcon, end: true },
   { to: '/schedule', label: '일정', icon: CalendarIcon },
   { to: '/items/new', label: '항목 추가', icon: PlusCircleIcon },
   { to: '/stats', label: '통계', icon: ChartIcon },
@@ -61,7 +65,7 @@ export function AppLayout() {
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === '/'}
+              end={item.end}
               className={({ isActive }) =>
                 `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                   isActive

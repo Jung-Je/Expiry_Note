@@ -39,6 +39,8 @@ export interface ListItemsParams {
   status?: string
   search?: string
   date?: string
+  // "YYYY-MM" — expiry_date가 그 달에 속하는 항목만.
+  month?: string
 }
 
 export interface CategoryStat {

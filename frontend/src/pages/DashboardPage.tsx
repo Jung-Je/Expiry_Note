@@ -10,14 +10,9 @@ import {
 } from 'date-fns'
 import { Link } from 'react-router-dom'
 import { AlertIcon, ClipboardIcon, WonIcon } from '../components/icons'
-import {
-  CATEGORY_AVATAR_STYLES,
-  categoryLabel,
-  STATUS_BADGE_STYLES,
-  STATUS_LABELS,
-} from '../features/items/constants'
-import { formatAmount, formatDday } from '../features/items/format'
+import { formatAmount } from '../features/items/format'
 import { useItemsQuery, useItemStatsQuery, useMonthlyCalendarQuery } from '../features/items/hooks'
+import { ItemListRow } from '../features/items/ItemListRow'
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -27,20 +22,32 @@ function StatCard({
   label,
   value,
   badge,
+  to,
 }: {
   icon: typeof WonIcon
   iconStyle: string
   label: string
   value: string
   badge?: string
+  /** 이 숫자를 이루는 항목들을 보여주는 목록 화면 경로. */
+  to: string
 }) {
   return (
-    <div className="rounded-2xl bg-white p-[18px] shadow-sm shadow-slate-200/70">
+    <Link
+      to={to}
+      className="group block rounded-2xl bg-white p-[18px] shadow-sm shadow-slate-200/70 transition hover:shadow-md hover:shadow-slate-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+    >
       <div className="flex items-center gap-2.5">
         <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconStyle}`}>
           <Icon />
         </div>
         <p className="truncate text-sm text-slate-500">{label}</p>
+        <span
+          aria-hidden
+          className="ml-auto text-sm text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-brand"
+        >
+          →
+        </span>
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-2">
         <p className="truncate text-xl font-bold text-slate-900">{value}</p>
@@ -50,7 +57,7 @@ function StatCard({
           </span>
         )}
       </div>
-    </div>
+    </Link>
   )
 }
 
@@ -135,18 +142,21 @@ export function DashboardPage() {
           iconStyle="bg-violet-100 text-violet-700"
           label="이번 달 예정 금액"
           value={isStatsLoading ? '-' : formatAmount(thisMonthAmount)}
+          to={`/items?month=${format(new Date(), 'yyyy-MM')}`}
         />
         <StatCard
           icon={AlertIcon}
           iconStyle="bg-red-100 text-red-600"
           label="7일 이내 만료"
           value={isStatsLoading ? '-' : `${urgentCount}건`}
+          to="/items?status=urgent"
         />
         <StatCard
           icon={ClipboardIcon}
           iconStyle="bg-emerald-100 text-emerald-700"
           label="등록한 항목"
           value={isStatsLoading ? '-' : `${stats?.total_count ?? 0}건`}
+          to="/items"
         />
       </div>
 
@@ -165,28 +175,7 @@ export function DashboardPage() {
             <ul className="mt-4 flex flex-col divide-y divide-slate-100">
               {urgentItems.map((item) => (
                 <li key={item.id}>
-                  <Link
-                    to={`/items/${item.id}`}
-                    className="flex items-center gap-3 py-3 transition hover:opacity-80"
-                  >
-                    <span
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${CATEGORY_AVATAR_STYLES[item.category]}`}
-                    >
-                      {item.title.charAt(0)}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-900">{item.title}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        {categoryLabel(item.category)} · {item.expiry_date}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-sm text-slate-600">{formatAmount(item.amount)}</span>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE_STYLES[item.status]}`}
-                    >
-                      {STATUS_LABELS[item.status]} · {formatDday(item.days_until_expiry)}
-                    </span>
-                  </Link>
+                  <ItemListRow item={item} />
                 </li>
               ))}
             </ul>
