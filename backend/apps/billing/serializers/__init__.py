@@ -1,4 +1,5 @@
 from apps.billing.serializers.subscription import (
+    AdminPaymentSerializer,
     ChangePlanSerializer,
     PaymentSerializer,
     StartSubscriptionSerializer,
@@ -6,6 +7,7 @@ from apps.billing.serializers.subscription import (
 )
 
 __all__ = [
+    "AdminPaymentSerializer",
     "ChangePlanSerializer",
     "PaymentSerializer",
     "StartSubscriptionSerializer",

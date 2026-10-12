@@ -8,6 +8,17 @@ export function useAdminUsersQuery(search: string) {
   })
 }
 
+export function useSetUserActiveMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) =>
+      adminApi.setUserActive(id, isActive),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+    },
+  })
+}
+
 export function useAdminInquiriesQuery() {
   return useQuery({
     queryKey: ['admin', 'inquiries'],
@@ -23,5 +34,19 @@ export function useReplyToInquiryMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'inquiries'] })
     },
+  })
+}
+
+export function useAdminOverviewQuery() {
+  return useQuery({
+    queryKey: ['admin', 'overview'],
+    queryFn: adminApi.getOverview,
+  })
+}
+
+export function useAdminPaymentsQuery() {
+  return useQuery({
+    queryKey: ['admin', 'payments'],
+    queryFn: adminApi.listPayments,
   })
 }

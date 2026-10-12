@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.accounts.views import (
+    AdminUserDetailView,
     AdminUserListView,
     ChangePasswordView,
     EmailVerificationConfirmView,
@@ -30,4 +31,5 @@ urlpatterns = [
     path("kakao/login/", KakaoLoginView.as_view(), name="auth-kakao-login"),
     path("me/", MeView.as_view(), name="auth-me"),
     path("admin/users/", AdminUserListView.as_view(), name="auth-admin-users"),
+    path("admin/users/<int:pk>/", AdminUserDetailView.as_view(), name="auth-admin-user-detail"),
 ]

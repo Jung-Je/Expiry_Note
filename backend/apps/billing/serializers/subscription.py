@@ -47,3 +47,25 @@ class PaymentSerializer(serializers.ModelSerializer):
         model = Payment
         fields = ["id", "amount", "status", "order_id", "paid_at", "created_at"]
         read_only_fields = fields
+
+
+class AdminPaymentSerializer(serializers.ModelSerializer):
+    """관리자 화면의 결제 내역. 전체 유저 대상, 읽기 전용."""
+
+    user_email = serializers.EmailField(source="subscription.user.email", read_only=True)
+    plan = serializers.CharField(source="subscription.plan", read_only=True)
+
+    class Meta:
+        model = Payment
+        fields = [
+            "id",
+            "user_email",
+            "plan",
+            "amount",
+            "status",
+            "order_id",
+            "failure_reason",
+            "paid_at",
+            "created_at",
+        ]
+        read_only_fields = fields

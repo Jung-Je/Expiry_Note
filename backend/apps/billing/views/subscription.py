@@ -1,8 +1,11 @@
 from rest_framework import generics, status
+from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.billing.models import Payment
 from apps.billing.serializers import (
+    AdminPaymentSerializer,
     ChangePlanSerializer,
     PaymentSerializer,
     StartSubscriptionSerializer,
@@ -68,3 +71,11 @@ class PaymentListView(generics.ListAPIView):
     def get_queryset(self):
         subscription = get_or_create_subscription(self.request.user)
         return subscription.payments.all()
+
+
+class AdminPaymentListView(generics.ListAPIView):
+    """관리자 화면의 결제 내역. 전체 유저 대상, 스태프 계정만 접근 가능."""
+
+    permission_classes = [IsAdminUser]
+    serializer_class = AdminPaymentSerializer
+    queryset = Payment.objects.select_related("subscription__user").all()

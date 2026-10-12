@@ -5,6 +5,8 @@ import { AdminRoute } from './features/auth/AdminRoute'
 import { AuthProvider } from './features/auth/AuthContext'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
 import { AdminInquiriesPage } from './pages/admin/AdminInquiriesPage'
+import { AdminOverviewPage } from './pages/admin/AdminOverviewPage'
+import { AdminPaymentsPage } from './pages/admin/AdminPaymentsPage'
 import { AdminUsersPage } from './pages/admin/AdminUsersPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ItemDetailPage } from './pages/ItemDetailPage'
@@ -53,7 +55,9 @@ export default function App() {
                 <Route path="/pricing" element={<Navigate to="/settings?tab=pricing" replace />} />
 
                 <Route element={<AdminRoute />}>
+                  <Route path="/admin" element={<AdminOverviewPage />} />
                   <Route path="/admin/users" element={<AdminUsersPage />} />
+                  <Route path="/admin/payments" element={<AdminPaymentsPage />} />
                   <Route path="/admin/inquiries" element={<AdminInquiriesPage />} />
                 </Route>
               </Route>
