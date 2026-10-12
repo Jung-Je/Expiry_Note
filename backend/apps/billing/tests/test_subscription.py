@@ -13,6 +13,7 @@ from apps.billing.services import (
     change_plan,
     describe_item_limit,
     get_or_create_subscription,
+    grant_plan,
     renew_due_subscriptions,
     start_subscription,
 )
@@ -257,6 +258,83 @@ class TestRenewDueSubscriptions:
         subscription.refresh_from_db()
         assert subscription.plan == Subscription.Plan.FREE
         assert subscription.status == Subscription.Status.ACTIVE
+
+
+class TestAdminGrantedPlan:
+    @pytest.mark.django_db
+    def test_granted_plan_is_never_charged_on_renewal(self, user):
+        grant_plan(user, plan=Subscription.Plan.PRO, period_end=timezone.localdate())
+
+        with patch("apps.billing.services.subscription.charge_billing_key") as mock_charge:
+            renewed = renew_due_subscriptions()
+
+        mock_charge.assert_not_called()
+        assert renewed == []
+        # 종료일 당일까지는 유지된다.
+        assert get_or_create_subscription(user).plan == Subscription.Plan.PRO
+
+    @pytest.mark.django_db
+    def test_granted_plan_reverts_to_free_after_its_end_date(self, user):
+        subscription = grant_plan(user, plan=Subscription.Plan.PRO, period_end=timezone.localdate())
+        subscription.current_period_end = timezone.localdate() - timedelta(days=1)
+        subscription.save(update_fields=["current_period_end"])
+
+        renew_due_subscriptions()
+
+        subscription.refresh_from_db()
+        assert subscription.plan == Subscription.Plan.FREE
+        assert subscription.is_admin_granted is False
+        assert subscription.current_period_end is None
+
+    @pytest.mark.django_db
+    def test_granted_plan_without_end_date_is_kept(self, user):
+        grant_plan(user, plan=Subscription.Plan.BASIC)
+
+        renew_due_subscriptions()
+
+        assert get_or_create_subscription(user).plan == Subscription.Plan.BASIC
+
+    @pytest.mark.django_db
+    def test_user_cannot_cancel_or_change_a_granted_plan(self, user):
+        grant_plan(user, plan=Subscription.Plan.BASIC)
+
+        with pytest.raises(SubscriptionError):
+            cancel_subscription(user)
+        with pytest.raises(SubscriptionError):
+            change_plan(user, plan=Subscription.Plan.PRO)
+
+        assert get_or_create_subscription(user).plan == Subscription.Plan.BASIC
+
+    @pytest.mark.django_db
+    def test_granting_over_a_paying_subscription_stops_its_billing(self, user):
+        subscription = get_or_create_subscription(user)
+        subscription.plan = Subscription.Plan.BASIC
+        subscription.billing_key = "billing-key-123"
+        subscription.current_period_end = timezone.localdate()
+        subscription.save()
+
+        grant_plan(user, plan=Subscription.Plan.PRO)
+        with patch("apps.billing.services.subscription.charge_billing_key") as mock_charge:
+            renew_due_subscriptions()
+
+        mock_charge.assert_not_called()
+        subscription.refresh_from_db()
+        assert subscription.plan == Subscription.Plan.PRO
+        assert subscription.billing_key == "billing-key-123"
+
+    @pytest.mark.django_db
+    def test_paying_for_a_plan_clears_the_grant(self, user):
+        grant_plan(user, plan=Subscription.Plan.BASIC)
+
+        with (
+            patch("apps.billing.services.subscription.issue_billing_key") as mock_issue,
+            patch("apps.billing.services.subscription.charge_billing_key") as mock_charge,
+        ):
+            mock_issue.return_value = "billing-key-123"
+            mock_charge.return_value = {"paymentKey": "payment-key-1"}
+            subscription = start_subscription(user, auth_key="auth", plan=Subscription.Plan.PRO)
+
+        assert subscription.is_admin_granted is False
 
 
 class TestDescribeItemLimit:

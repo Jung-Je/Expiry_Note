@@ -17,6 +17,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "status",
             "customer_key",
             "current_period_end",
+            "is_admin_granted",
             "item_count",
             "item_limit",
         ]
@@ -40,6 +41,20 @@ class StartSubscriptionSerializer(serializers.Serializer):
 
 class ChangePlanSerializer(serializers.Serializer):
     plan = serializers.ChoiceField(choices=sorted(PAID_PLANS))
+
+
+class AdminGrantPlanSerializer(serializers.Serializer):
+    """관리자가 유저에게 플랜을 부여할 때의 입력. period_end를 비우면 기간 제한 없음."""
+
+    plan = serializers.ChoiceField(choices=Subscription.Plan.choices)
+    period_end = serializers.DateField(required=False, allow_null=True)
+
+
+class AdminSubscriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscription
+        fields = ["plan", "status", "is_admin_granted", "current_period_end"]
+        read_only_fields = fields
 
 
 class PaymentSerializer(serializers.ModelSerializer):

@@ -19,6 +19,21 @@ export function useSetUserActiveMutation() {
   })
 }
 
+export function useGrantUserPlanMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, plan, periodEnd }: { id: number; plan: adminApi.AdminPlan; periodEnd: string | null }) =>
+      adminApi.grantUserPlan(id, plan, periodEnd),
+    onSuccess: () => {
+      // 개요 화면의 플랜 분포도 같이 바뀐다.
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'overview'] })
+      // 관리자가 본인 플랜을 바꾼 경우 사이드바·설정 화면의 내 구독 정보도 다시 받는다.
+      queryClient.invalidateQueries({ queryKey: ['billing'] })
+    },
+  })
+}
+
 export function useAdminInquiriesQuery() {
   return useQuery({
     queryKey: ['admin', 'inquiries'],

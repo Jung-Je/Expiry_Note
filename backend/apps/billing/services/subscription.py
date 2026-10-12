@@ -8,7 +8,7 @@
 """
 
 import uuid
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.utils import timezone
 
@@ -140,8 +140,46 @@ def start_subscription(user: User, *, auth_key: str, plan: str) -> Subscription:
     subscription.status = Subscription.Status.ACTIVE
     subscription.current_period_end = timezone.localdate() + timedelta(days=BILLING_PERIOD_DAYS)
     subscription.canceled_at = None
-    subscription.save(update_fields=["plan", "status", "current_period_end", "canceled_at"])
+    subscription.is_admin_granted = False
+    subscription.save(
+        update_fields=["plan", "status", "current_period_end", "canceled_at", "is_admin_granted"]
+    )
     return subscription
+
+
+def grant_plan(user: User, *, plan: str, period_end: date | None = None) -> Subscription:
+    """관리자가 결제 없이 유저의 플랜을 바꾼다.
+
+    유료 플랜을 주면 is_admin_granted가 켜져서 자동 결제 대상에서 빠지고,
+    period_end(그 날짜까지 유지)가 지나면 스케줄러가 무료로 되돌린다.
+    period_end가 없으면 관리자가 다시 바꿀 때까지 유지된다. 무료로 내리는
+    것도 여기서 한다. 실제로 결제 중이던 구독에 쓰면 그 구독의 자동 결제도
+    멈춘다(카드 정보인 billing_key는 남겨둔다).
+    """
+    if plan not in Subscription.Plan.values:
+        raise SubscriptionError("올바르지 않은 요금제입니다.")
+
+    is_paid = plan in PAID_PLANS
+    if is_paid and period_end is not None and period_end < timezone.localdate():
+        raise SubscriptionError("종료일은 오늘 이후여야 합니다.")
+
+    subscription = get_or_create_subscription(user)
+    subscription.plan = plan
+    subscription.status = Subscription.Status.ACTIVE
+    subscription.is_admin_granted = is_paid
+    subscription.current_period_end = period_end if is_paid else None
+    subscription.canceled_at = None
+    subscription.save(
+        update_fields=["plan", "status", "is_admin_granted", "current_period_end", "canceled_at"]
+    )
+    return subscription
+
+
+def _reject_if_admin_granted(subscription: Subscription) -> None:
+    # 관리자가 부여한 플랜은 결제 주기가 없어서 "다음 결제부터 적용/중단"이라는
+    # 변경·해지 정책이 성립하지 않는다.
+    if subscription.is_admin_granted:
+        raise SubscriptionError("관리자가 부여한 플랜은 직접 변경하거나 해지할 수 없습니다.")
 
 
 def change_plan(user: User, *, plan: str) -> Subscription:
@@ -155,6 +193,7 @@ def change_plan(user: User, *, plan: str) -> Subscription:
         raise SubscriptionError("올바르지 않은 요금제입니다.")
 
     subscription = get_or_create_subscription(user)
+    _reject_if_admin_granted(subscription)
     if subscription.plan not in PAID_PLANS or subscription.status != Subscription.Status.ACTIVE:
         raise SubscriptionError("구독 중인 상태가 아닙니다.")
     if subscription.plan == plan:
@@ -169,6 +208,7 @@ def cancel_subscription(user: User) -> Subscription:
     """다음 결제부터 청구를 멈춘다. 이미 낸 이번 결제 주기(current_period_end)까지는
     지금 플랜이 그대로 유지된다 — README에 명시한 "언제든 해지" 정책."""
     subscription = get_or_create_subscription(user)
+    _reject_if_admin_granted(subscription)
     if subscription.plan not in PAID_PLANS or subscription.status != Subscription.Status.ACTIVE:
         raise SubscriptionError("구독 중인 상태가 아닙니다.")
 
@@ -191,6 +231,7 @@ def renew_due_subscriptions() -> list[Subscription]:
     due_active = Subscription.objects.filter(
         plan__in=PAID_PLANS,
         status=Subscription.Status.ACTIVE,
+        is_admin_granted=False,
         current_period_end__lte=today,
     )
     for subscription in due_active:
@@ -209,5 +250,16 @@ def renew_due_subscriptions() -> list[Subscription]:
         status=Subscription.Status.CANCELED,
         current_period_end__lte=today,
     ).update(plan=Subscription.Plan.FREE, status=Subscription.Status.ACTIVE)
+
+    # 관리자가 기간을 정해 부여한 플랜은 종료일 당일까지 유지하고 다음 날 내린다.
+    Subscription.objects.filter(
+        is_admin_granted=True,
+        current_period_end__lt=today,
+    ).update(
+        plan=Subscription.Plan.FREE,
+        status=Subscription.Status.ACTIVE,
+        is_admin_granted=False,
+        current_period_end=None,
+    )
 
     return renewed

@@ -8,6 +8,7 @@ from apps.billing.services.subscription import (
     describe_item_limit,
     get_item_limit,
     get_or_create_subscription,
+    grant_plan,
     renew_due_subscriptions,
     start_subscription,
 )
@@ -24,6 +25,7 @@ __all__ = [
     "describe_item_limit",
     "get_item_limit",
     "get_or_create_subscription",
+    "grant_plan",
     "renew_due_subscriptions",
     "start_subscription",
 ]

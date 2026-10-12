@@ -10,6 +10,11 @@ export interface AdminUser {
   is_email_verified: boolean
   signup_source: SignupSource
   date_joined: string
+  plan: AdminPlan
+  // 유료 결제 중이면 다음 결제일, 관리자가 부여한 플랜이면 유지되는 마지막 날
+  // (null이면 기간 제한 없음).
+  plan_period_end: string | null
+  is_plan_admin_granted: boolean
 }
 
 export type InquiryCategory = 'general' | 'billing' | 'bug' | 'feature' | 'other'
@@ -66,6 +71,11 @@ export async function setUserActive(id: number, isActive: boolean): Promise<Admi
     is_active: isActive,
   })
   return data
+}
+
+/** 결제 없이 유저의 플랜을 바꾼다. periodEnd를 비우면 기간 제한 없이 유지된다. */
+export async function grantUserPlan(id: number, plan: AdminPlan, periodEnd: string | null): Promise<void> {
+  await api.patch(`/billing/admin/users/${id}/subscription/`, { plan, period_end: periodEnd })
 }
 
 export async function listInquiries(): Promise<AdminInquiry[]> {

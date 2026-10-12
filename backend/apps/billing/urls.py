@@ -2,6 +2,7 @@ from django.urls import path
 
 from apps.billing.views import (
     AdminPaymentListView,
+    AdminUserSubscriptionView,
     CancelSubscriptionView,
     ChangePlanView,
     PaymentListView,
@@ -16,4 +17,9 @@ urlpatterns = [
     path("cancel/", CancelSubscriptionView.as_view(), name="billing-cancel"),
     path("payments/", PaymentListView.as_view(), name="billing-payments"),
     path("admin/payments/", AdminPaymentListView.as_view(), name="billing-admin-payments"),
+    path(
+        "admin/users/<int:user_id>/subscription/",
+        AdminUserSubscriptionView.as_view(),
+        name="billing-admin-user-subscription",
+    ),
 ]

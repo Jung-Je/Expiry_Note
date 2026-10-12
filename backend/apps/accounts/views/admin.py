@@ -14,7 +14,7 @@ class AdminUserListView(generics.ListAPIView):
     serializer_class = AdminUserSerializer
 
     def get_queryset(self):
-        queryset = User.objects.all().order_by("-date_joined")
+        queryset = User.objects.select_related("subscription").order_by("-date_joined")
         search = self.request.query_params.get("search")
         if search:
             queryset = queryset.filter(Q(email__icontains=search) | Q(name__icontains=search))
@@ -30,7 +30,7 @@ class AdminUserDetailView(generics.RetrieveUpdateAPIView):
 
     permission_classes = [IsAdminUser]
     serializer_class = AdminUserSerializer
-    queryset = User.objects.all()
+    queryset = User.objects.select_related("subscription")
 
     def perform_update(self, serializer):
         instance = serializer.instance
