@@ -87,3 +87,11 @@ jobs:
       - name: Test
         working-directory: frontend
         run: npm run test
+
+      # oxlint/vitest는 타입 검사를 하지 않아서, 타입 에러는 이 단계가 없으면
+      # main에 merge된 뒤 deploy-frontend.yml의 빌드에서야 터진다. 배포와 같은
+      # 명령(tsc -b && vite build)을 PR 단계에서 미리 돌려 잡는다. 결과물은
+      # 버리므로 .envs/.env.prod(GitHub Secrets)는 만들지 않는다.
+      - name: Build
+        working-directory: frontend
+        run: npm run build
