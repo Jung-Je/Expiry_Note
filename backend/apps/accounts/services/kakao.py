@@ -26,6 +26,10 @@ class InvalidKakaoToken(Exception):
     pass
 
 
+class InactiveKakaoUser(Exception):
+    pass
+
+
 def exchange_kakao_code(*, code: str, redirect_uri: str) -> str:
     """인가 코드를 access_token으로 교환한다.
 
@@ -59,6 +63,14 @@ def fetch_kakao_profile(access_token: str) -> dict:
     return response.json()
 
 
+def _ensure_active(user: User) -> None:
+    # 이메일 로그인은 simplejwt가 is_active를 검사해주지만, 카카오 로그인은
+    # 뷰에서 RefreshToken.for_user()로 직접 토큰을 만들기 때문에 아무도
+    # 막아주지 않는다 — 관리자가 비활성화한 계정이면 여기서 끊는다.
+    if not user.is_active:
+        raise InactiveKakaoUser
+
+
 @transaction.atomic
 def get_or_create_kakao_user(access_token: str) -> User:
     profile = fetch_kakao_profile(access_token)
@@ -77,6 +89,7 @@ def get_or_create_kakao_user(access_token: str) -> User:
 
     user = User.objects.filter(kakao_id=kakao_id).first()
     if user is not None:
+        _ensure_active(user)
         # 예전엔 닉네임을 못 읽어와서 "카카오 사용자"로 저장된 유저가 있을 수
         # 있다 — 이번에 진짜 이름을 받아왔으면 다음 로그인 때 자동으로
         # 고쳐준다. 유저가 설정 화면에서 직접 바꾼 이름은 건드리지 않는다.
@@ -90,6 +103,7 @@ def get_or_create_kakao_user(access_token: str) -> User:
     if email:
         user = User.objects.filter(email__iexact=email).first()
         if user is not None:
+            _ensure_active(user)
             user.kakao_id = kakao_id
             user.save(update_fields=["kakao_id"])
             return user

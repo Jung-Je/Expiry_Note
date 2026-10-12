@@ -23,6 +23,7 @@ from apps.accounts.serializers import (
     UserSerializer,
 )
 from apps.accounts.services import (
+    InactiveKakaoUser,
     InvalidCurrentPassword,
     InvalidKakaoCode,
     InvalidKakaoToken,
@@ -208,6 +209,13 @@ class KakaoLoginView(APIView):
             return Response(
                 {"detail": "카카오 로그인에 실패했습니다. 다시 시도해주세요."},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+        except InactiveKakaoUser:
+            # 401이 아니라 403 — 프론트 axios 인터셉터가 401을 "access 만료"로
+            # 보고 refresh 재발급을 시도하기 때문에, 그 경로를 타지 않게 한다.
+            return Response(
+                {"detail": "비활성화된 계정입니다. 관리자에게 문의해주세요."},
+                status=status.HTTP_403_FORBIDDEN,
             )
         refresh = RefreshToken.for_user(user)
         response = Response(

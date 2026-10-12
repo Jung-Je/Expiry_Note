@@ -1,4 +1,7 @@
+from unittest.mock import patch
+
 import pytest
+from django.conf import settings
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
@@ -126,3 +129,45 @@ class TestAdminUserDetailAPI:
         )
 
         assert response.status_code == 401
+
+    @pytest.mark.django_db
+    def test_deactivated_user_cannot_log_in_with_kakao(self, staff_client, normal_user):
+        # 카카오 로그인은 simplejwt의 is_active 검사를 거치지 않고 뷰에서 직접
+        # 토큰을 만든다 — 비활성 계정에 토큰/쿠키가 발급되면 안 된다.
+        normal_user.kakao_id = "777"
+        normal_user.save(update_fields=["kakao_id"])
+        staff_client.patch(f"/api/v1/auth/admin/users/{normal_user.id}/", {"is_active": False})
+
+        response = _kakao_login({"id": 777, "kakao_account": {"email": normal_user.email}})
+
+        assert response.status_code == 403
+        assert "access" not in response.data
+        assert settings.JWT_REFRESH_COOKIE_NAME not in response.cookies
+
+    @pytest.mark.django_db
+    def test_deactivated_email_user_is_not_linked_via_kakao(self, staff_client, normal_user):
+        # 카카오 계정 이메일이 비활성화된 이메일 가입 계정과 같을 때 — 계정
+        # 연결(kakao_id 저장)도, 로그인도 되면 안 된다.
+        staff_client.patch(f"/api/v1/auth/admin/users/{normal_user.id}/", {"is_active": False})
+
+        response = _kakao_login({"id": 888, "kakao_account": {"email": normal_user.email}})
+
+        assert response.status_code == 403
+        normal_user.refresh_from_db()
+        assert normal_user.kakao_id is None
+
+
+def _kakao_login(profile: dict):
+    with (
+        patch("apps.accounts.services.kakao.requests.post") as mock_post,
+        patch("apps.accounts.services.kakao.requests.get") as mock_get,
+    ):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {"access_token": "fake-kakao-access-token"}
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = profile
+
+        return APIClient().post(
+            "/api/v1/auth/kakao/login/",
+            {"code": "fake-code", "redirect_uri": "http://localhost:5173/auth/kakao/callback"},
+        )
