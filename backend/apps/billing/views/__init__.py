@@ -1,4 +1,5 @@
 from apps.billing.views.subscription import (
+    AdminPaymentListView,
     CancelSubscriptionView,
     ChangePlanView,
     PaymentListView,
@@ -7,6 +8,7 @@ from apps.billing.views.subscription import (
 )
 
 __all__ = [
+    "AdminPaymentListView",
     "CancelSubscriptionView",
     "ChangePlanView",
     "PaymentListView",

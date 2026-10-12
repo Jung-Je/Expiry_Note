@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { useAdminUsersQuery } from '../../features/admin/hooks'
+import { useAdminUsersQuery, useSetUserActiveMutation } from '../../features/admin/hooks'
+import type { AdminUser } from '../../features/admin/api'
 import type { SignupSource } from '../../features/auth/api'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 
 const SIGNUP_SOURCE_LABELS: Record<SignupSource, string> = {
   email: '이메일',
@@ -14,6 +16,55 @@ function formatDate(value: string): string {
     month: '2-digit',
     day: '2-digit',
   })
+}
+
+function UserActionCell({ user }: { user: AdminUser }) {
+  const [isConfirming, setIsConfirming] = useState(false)
+  const { mutate, isPending } = useSetUserActiveMutation()
+
+  if (user.is_staff) {
+    return <span className="text-xs text-slate-400">관리자</span>
+  }
+
+  if (!user.is_active) {
+    return (
+      <button
+        type="button"
+        onClick={() => mutate({ id: user.id, isActive: true })}
+        disabled={isPending}
+        className="text-xs font-medium text-brand hover:text-brand-hover disabled:opacity-50"
+      >
+        재활성화
+      </button>
+    )
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsConfirming(true)}
+        className="text-xs font-medium text-red-600 hover:text-red-500"
+      >
+        비활성화
+      </button>
+      {isConfirming && (
+        <ConfirmDialog
+          title="이 회원을 비활성화할까요?"
+          description={`${user.email} 계정이 더 이상 로그인할 수 없게 됩니다. 나중에 다시 활성화할 수 있어요.`}
+          confirmLabel="비활성화"
+          isConfirming={isPending}
+          onConfirm={() => {
+            mutate(
+              { id: user.id, isActive: false },
+              { onSuccess: () => setIsConfirming(false) },
+            )
+          }}
+          onCancel={() => setIsConfirming(false)}
+        />
+      )}
+    </>
+  )
 }
 
 export function AdminUsersPage() {
@@ -34,7 +85,7 @@ export function AdminUsersPage() {
       />
 
       <div className="mt-4 overflow-x-auto rounded-2xl bg-white shadow-sm shadow-slate-200/70">
-        <table className="w-full min-w-[640px] text-left text-sm">
+        <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="border-b border-slate-100 text-slate-500">
               <th className="px-4 py-3 font-medium">이메일</th>
@@ -43,19 +94,20 @@ export function AdminUsersPage() {
               <th className="px-4 py-3 font-medium">이메일 인증</th>
               <th className="px-4 py-3 font-medium">상태</th>
               <th className="px-4 py-3 font-medium">가입일</th>
+              <th className="px-4 py-3 font-medium">관리</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
                   불러오는 중...
                 </td>
               </tr>
             )}
             {!isLoading && users?.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
                   조건에 맞는 회원이 없습니다.
                 </td>
               </tr>
@@ -76,6 +128,9 @@ export function AdminUsersPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-slate-500">{formatDate(u.date_joined)}</td>
+                <td className="px-4 py-3">
+                  <UserActionCell user={u} />
+                </td>
               </tr>
             ))}
           </tbody>

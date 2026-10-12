@@ -13,6 +13,7 @@ import {
   MessageIcon,
   PlusCircleIcon,
   UsersIcon,
+  WonIcon,
 } from '../icons'
 
 const NAV_ITEMS = [
@@ -25,7 +26,9 @@ const NAV_ITEMS = [
 ]
 
 const ADMIN_NAV_ITEMS = [
+  { to: '/admin', label: '개요', icon: ChartIcon },
   { to: '/admin/users', label: '회원 관리', icon: UsersIcon },
+  { to: '/admin/payments', label: '결제 내역', icon: WonIcon },
   { to: '/admin/inquiries', label: '문의 관리', icon: MessageIcon },
 ]
 
@@ -80,6 +83,7 @@ export function AppLayout() {
               <NavLink
                 key={item.to}
                 to={item.to}
+                end={item.to === '/admin'}
                 className={({ isActive }) =>
                   `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                     isActive
