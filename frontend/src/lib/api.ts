@@ -61,14 +61,37 @@ api.interceptors.response.use(
   },
 )
 
-// 필드에 안 묶인 채로(perform_create 등에서) raise된 DRF ValidationError는
-// 응답 바디가 `["메시지"]` 형태의 평범한 배열로 온다 — 그 메시지를 그대로
-// 사용자에게 보여줄 수 있을 때만 꺼내고, 그 외(필드별 에러 등)엔 fallback을 쓴다.
+function firstMessage(value: unknown): string | null {
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) {
+    return typeof value[0] === 'string' ? value[0] : null
+  }
+  return null
+}
+
+// 서버(DRF)가 4xx 응답에 담아 보낸 안내 문구를 꺼낸다. 문구는 한국어로 오므로
+// (LANGUAGE_CODE=ko-kr) 그대로 보여줄 수 있다. 응답 형태는 세 가지다:
+//   - `["메시지"]`: 필드에 안 묶인 채로 raise된 ValidationError
+//   - `{"detail": "메시지"}`: 뷰가 직접 내려준 오류, 권한/요청 제한 등
+//   - `{"필드명": ["메시지"], ...}`: 필드별 검증 오류 — 첫 번째 것만 쓴다
+// 그 외(네트워크 오류, 5xx, 세션 만료 등)엔 fallback을 쓴다.
 export function extractErrorMessage(error: unknown, fallback: string): string {
-  if (axios.isAxiosError(error)) {
-    const data: unknown = error.response?.data
-    if (Array.isArray(data) && typeof data[0] === 'string') {
-      return data[0]
+  if (!axios.isAxiosError(error)) return fallback
+  const status = error.response?.status
+  // 401은 세션 만료라 응답 문구가 지금 하던 작업과 무관하다.
+  if (!status || status < 400 || status >= 500 || status === 401) return fallback
+
+  const data: unknown = error.response?.data
+  if (Array.isArray(data)) {
+    return firstMessage(data) ?? fallback
+  }
+  if (data && typeof data === 'object') {
+    const record = data as Record<string, unknown>
+    const detail = firstMessage(record.detail)
+    if (detail) return detail
+    for (const value of Object.values(record)) {
+      const message = firstMessage(value)
+      if (message) return message
     }
   }
   return fallback

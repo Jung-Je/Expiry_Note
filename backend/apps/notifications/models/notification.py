@@ -13,6 +13,7 @@ class Notification(models.Model):
         EXPIRY = "expiry", "만료 예정"
         PAYMENT = "payment", "결제 예정"
         INQUIRY_REPLY = "inquiry_reply", "문의 답변"
+        PLAN_CHANGE = "plan_change", "요금제 변경"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -10,6 +10,7 @@ import {
 } from '../features/items/constants'
 import { formatAmount, formatDday } from '../features/items/format'
 import { useDeleteItemMutation, useItemQuery, useSetItemCancelledMutation } from '../features/items/hooks'
+import { extractErrorMessage } from '../lib/api'
 
 function formatDots(isoDate: string): string {
   return isoDate.slice(0, 10).replaceAll('-', '.')
@@ -40,8 +41,8 @@ export function ItemDetailPage() {
     setActionError(null)
     try {
       await setItemCancelled.mutateAsync({ id: item.id, is_cancelled: !item.is_cancelled })
-    } catch {
-      setActionError('처리에 실패했습니다. 잠시 후 다시 시도해주세요.')
+    } catch (error) {
+      setActionError(extractErrorMessage(error, '처리에 실패했습니다. 잠시 후 다시 시도해주세요.'))
     }
   }
 

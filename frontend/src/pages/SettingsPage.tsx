@@ -14,6 +14,7 @@ import {
   usePaymentsQuery,
   useSubscriptionQuery,
 } from '../features/billing/hooks'
+import { extractErrorMessage } from '../lib/api'
 // TODO: 사업자 등록 완료 후 아래 import 되돌리기
 // import { startCardRegistration } from '../features/billing/toss'
 import {
@@ -132,6 +133,7 @@ function SecurityTab() {
   const { clearSession } = useAuth()
   const navigate = useNavigate()
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
   const [isWithdrawing, setIsWithdrawing] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
   const {
@@ -150,7 +152,8 @@ function SecurityTab() {
       })
       setStatus('success')
       reset()
-    } catch {
+    } catch (error) {
+      setErrorMessage(extractErrorMessage(error, '변경에 실패했습니다. 현재 비밀번호를 확인해주세요.'))
       setStatus('error')
     }
   }
@@ -226,9 +229,7 @@ function SecurityTab() {
             비밀번호가 변경되었습니다. 다른 기기는 모두 로그아웃 처리됩니다.
           </p>
         )}
-        {status === 'error' && (
-          <p className="text-sm text-red-600">변경에 실패했습니다. 현재 비밀번호를 확인해주세요.</p>
-        )}
+        {status === 'error' && <p className="text-sm text-red-600">{errorMessage}</p>}
 
         <button
           type="submit"
@@ -360,6 +361,7 @@ function MyInquiryList() {
 
 function InquiryTab() {
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
   const createInquiry = useCreateInquiryMutation()
   const {
     register,
@@ -377,7 +379,8 @@ function InquiryTab() {
       await createInquiry.mutateAsync(values)
       setStatus('success')
       reset()
-    } catch {
+    } catch (error) {
+      setErrorMessage(extractErrorMessage(error, '문의 접수에 실패했습니다.'))
       setStatus('error')
     }
   }
@@ -434,7 +437,7 @@ function InquiryTab() {
         {status === 'success' && (
           <p className="text-sm text-emerald-600">문의가 접수됐습니다. 빠르게 답변드릴게요.</p>
         )}
-        {status === 'error' && <p className="text-sm text-red-600">문의 접수에 실패했습니다.</p>}
+        {status === 'error' && <p className="text-sm text-red-600">{errorMessage}</p>}
 
         <button
           type="submit"
@@ -558,8 +561,8 @@ function PricingTab() {
     setError(null)
     try {
       await changePlan.mutateAsync(plan)
-    } catch {
-      setError('플랜 변경에 실패했습니다. 잠시 후 다시 시도해주세요.')
+    } catch (caught) {
+      setError(extractErrorMessage(caught, '플랜 변경에 실패했습니다. 잠시 후 다시 시도해주세요.'))
     }
   }
 
@@ -568,8 +571,8 @@ function PricingTab() {
     setError(null)
     try {
       await cancelSubscription.mutateAsync()
-    } catch {
-      setError('해지에 실패했습니다. 잠시 후 다시 시도해주세요.')
+    } catch (caught) {
+      setError(extractErrorMessage(caught, '해지에 실패했습니다. 잠시 후 다시 시도해주세요.'))
     }
   }
 

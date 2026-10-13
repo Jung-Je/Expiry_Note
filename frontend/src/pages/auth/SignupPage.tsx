@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { AuthLayout } from '../../components/layout/AuthLayout'
 import { useAuth } from '../../features/auth/useAuth'
+import { extractErrorMessage } from '../../lib/api'
 
 const schema = z
   .object({
@@ -41,8 +42,8 @@ export function SignupPage() {
         replace: true,
         state: { message: '가입이 완료되었습니다. 이메일로 온 인증 링크를 확인한 뒤 로그인해주세요.' },
       })
-    } catch {
-      setServerError('가입에 실패했습니다. 이미 등록된 이메일인지 확인해주세요.')
+    } catch (error) {
+      setServerError(extractErrorMessage(error, '가입에 실패했습니다. 잠시 후 다시 시도해주세요.'))
     }
   }
 

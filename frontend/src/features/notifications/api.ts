@@ -1,6 +1,6 @@
 import { api } from '../../lib/api'
 
-export type NotificationType = 'expiry' | 'payment' | 'inquiry_reply'
+export type NotificationType = 'expiry' | 'payment' | 'inquiry_reply' | 'plan_change'
 
 export interface Notification {
   id: number
