@@ -8,6 +8,14 @@ export function useMyInquiriesQuery() {
   })
 }
 
+export function useMyInquiryQuery(id: number) {
+  return useQuery({
+    queryKey: ['support', 'inquiries', id],
+    queryFn: () => supportApi.getMyInquiry(id),
+    enabled: Number.isInteger(id) && id > 0,
+  })
+}
+
 export function useCreateInquiryMutation() {
   const queryClient = useQueryClient()
   return useMutation({

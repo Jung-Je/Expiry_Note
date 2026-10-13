@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { Toggle } from '../components/ui/Toggle'
@@ -315,7 +315,9 @@ function MyInquiryCard({ inquiry }: { inquiry: Inquiry }) {
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
           {INQUIRY_CATEGORY_LABELS[inquiry.category]}
         </span>
-        <span className="text-sm font-medium text-slate-900">{inquiry.title}</span>
+        <Link to={`/inquiries/${inquiry.id}`} className="text-sm font-medium text-slate-900 hover:text-brand">
+          {inquiry.title}
+        </Link>
         <span
           className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${
             inquiry.is_answered ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
