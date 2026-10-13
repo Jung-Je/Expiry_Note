@@ -14,6 +14,7 @@ class Notification(models.Model):
         PAYMENT = "payment", "결제 예정"
         INQUIRY_REPLY = "inquiry_reply", "문의 답변"
         PLAN_CHANGE = "plan_change", "요금제 변경"
+        NOTICE = "notice", "공지"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -39,7 +40,8 @@ class Notification(models.Model):
     )
     type = models.CharField(max_length=20, choices=Type.choices, default=Type.EXPIRY)
     title = models.CharField(max_length=100)
-    message = models.CharField(max_length=255)
+    # 관리자가 직접 쓰는 공지 본문까지 담을 수 있는 길이.
+    message = models.CharField(max_length=500)
     # 알림 생성 시점의 item.expiry_date. item.expiry_date와 별도로 저장해서,
     # 나중에 항목이 수정되더라도 "이 날짜에 대해 이미 알림을 보냈는지"
     # 판단하는 유일성 검사가 깨지지 않도록 한다. item이 없는 알림 유형은

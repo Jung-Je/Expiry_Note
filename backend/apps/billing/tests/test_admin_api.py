@@ -7,6 +7,7 @@ from rest_framework.test import APIClient
 from apps.accounts.models import User
 from apps.billing.models import Payment, Subscription
 from apps.billing.services import get_item_limit
+from apps.core.models import AdminActionLog
 
 
 @pytest.fixture
@@ -47,9 +48,9 @@ class TestAdminPaymentListAPI:
         response = staff_client.get("/api/v1/billing/admin/payments/")
 
         assert response.status_code == 200
-        assert response.data[0]["id"] == payment.id
-        assert response.data[0]["user_email"] == payment.subscription.user.email
-        assert response.data[0]["plan"] == "basic"
+        assert response.data["results"][0]["id"] == payment.id
+        assert response.data["results"][0]["user_email"] == payment.subscription.user.email
+        assert response.data["results"][0]["plan"] == "basic"
 
     @pytest.mark.django_db
     def test_non_staff_is_forbidden(self, asker, payment):
@@ -141,6 +142,36 @@ class TestAdminGrantPlanAPI:
         assert response.status_code == 404
 
     @pytest.mark.django_db
+    def test_granting_is_logged_with_who_and_what(self, staff_client, staff_user, asker):
+        period_end = timezone.localdate() + timedelta(days=30)
+        staff_client.patch(
+            self._url(asker), {"plan": "pro", "period_end": str(period_end)}, format="json"
+        )
+
+        log = AdminActionLog.objects.get()
+        assert log.action == AdminActionLog.Action.PLAN_GRANT
+        assert log.actor == staff_user
+        assert log.target_user == asker
+        assert log.summary == f"프로 플랜 · {period_end}까지"
+
+    @pytest.mark.django_db
+    def test_saving_the_same_plan_again_is_not_logged_twice(self, staff_client, asker):
+        staff_client.patch(self._url(asker), {"plan": "pro"}, format="json")
+        staff_client.patch(self._url(asker), {"plan": "pro"}, format="json")
+
+        assert AdminActionLog.objects.count() == 1
+
+    @pytest.mark.django_db
+    def test_rejected_grant_is_not_logged(self, staff_client, asker):
+        yesterday = timezone.localdate() - timedelta(days=1)
+        response = staff_client.patch(
+            self._url(asker), {"plan": "pro", "period_end": str(yesterday)}, format="json"
+        )
+
+        assert response.status_code == 400
+        assert AdminActionLog.objects.count() == 0
+
+    @pytest.mark.django_db
     def test_granted_plan_raises_the_item_limit(self, staff_client, asker):
         staff_client.patch(self._url(asker), {"plan": "pro"}, format="json")
 
@@ -152,10 +183,10 @@ class TestAdminGrantPlanAPI:
 
         response = staff_client.get("/api/v1/auth/admin/users/")
 
-        row = next(row for row in response.data if row["email"] == asker.email)
+        row = next(row for row in response.data["results"] if row["email"] == asker.email)
         assert row["plan"] == "basic"
         assert row["is_plan_admin_granted"] is True
         # 구독 행이 아직 없는 유저(스태프 본인)는 무료로 보인다.
-        staff_row = next(row for row in response.data if row["email"] != asker.email)
+        staff_row = next(row for row in response.data["results"] if row["email"] != asker.email)
         assert staff_row["plan"] == "free"
         assert staff_row["is_plan_admin_granted"] is False

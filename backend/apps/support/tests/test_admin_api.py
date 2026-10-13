@@ -2,6 +2,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
+from apps.core.models import AdminActionLog
 from apps.notifications.models import Notification
 from apps.support.models import Inquiry
 
@@ -43,9 +44,39 @@ class TestAdminInquiryListAPI:
         response = staff_client.get("/api/v1/support/admin/inquiries/")
 
         assert response.status_code == 200
-        assert response.data[0]["id"] == inquiry.id
-        assert response.data[0]["user_email"] == inquiry.user.email
-        assert response.data[0]["is_answered"] is False
+        assert response.data["results"][0]["id"] == inquiry.id
+        assert response.data["results"][0]["user_email"] == inquiry.user.email
+        assert response.data["results"][0]["is_answered"] is False
+
+    @pytest.mark.django_db
+    def test_filters_by_answered_state(self, staff_client, asker, inquiry):
+        answered = Inquiry.objects.create(
+            user=asker,
+            category=Inquiry.Category.GENERAL,
+            title="답변된 문의",
+            content="내용",
+            reply="답변",
+            is_answered=True,
+        )
+
+        unanswered_only = staff_client.get(
+            "/api/v1/support/admin/inquiries/", {"answered": "false"}
+        )
+        answered_only = staff_client.get("/api/v1/support/admin/inquiries/", {"answered": "true"})
+
+        assert [row["id"] for row in unanswered_only.data["results"]] == [inquiry.id]
+        assert unanswered_only.data["count"] == 1
+        assert [row["id"] for row in answered_only.data["results"]] == [answered.id]
+
+    @pytest.mark.django_db
+    def test_filters_by_category(self, staff_client, asker, inquiry):
+        Inquiry.objects.create(
+            user=asker, category=Inquiry.Category.BILLING, title="결제 문의", content="내용"
+        )
+
+        response = staff_client.get("/api/v1/support/admin/inquiries/", {"category": "bug"})
+
+        assert [row["id"] for row in response.data["results"]] == [inquiry.id]
 
     @pytest.mark.django_db
     def test_non_staff_is_forbidden(self, asker, inquiry):
@@ -91,6 +122,19 @@ class TestAdminInquiryDetailAPI:
         )
 
         assert Notification.objects.count() == 1
+
+    @pytest.mark.django_db
+    def test_replying_is_logged(self, staff_client, staff_user, inquiry, asker):
+        url = f"/api/v1/support/admin/inquiries/{inquiry.id}/"
+        staff_client.patch(url, {"reply": "답변입니다."})
+        # 같은 내용으로 다시 저장한 건 남지 않는다.
+        staff_client.patch(url, {"reply": "답변입니다."})
+
+        log = AdminActionLog.objects.get()
+        assert log.action == AdminActionLog.Action.INQUIRY_REPLY
+        assert log.actor == staff_user
+        assert log.target_user == asker
+        assert log.summary == inquiry.title
 
     @pytest.mark.django_db
     def test_clearing_reply_marks_it_as_unanswered(self, staff_client, inquiry):

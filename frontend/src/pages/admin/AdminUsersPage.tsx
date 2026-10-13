@@ -1,249 +1,131 @@
-import { useState } from 'react'
-import { format } from 'date-fns'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Pagination } from '../../components/ui/Pagination'
+import { ADMIN_PAGE_SIZE } from '../../features/admin/api'
+import { useAdminUsersQuery } from '../../features/admin/hooks'
 import {
-  useAdminUsersQuery,
-  useGrantUserPlanMutation,
-  useSetUserActiveMutation,
-} from '../../features/admin/hooks'
-import type { AdminPlan, AdminUser } from '../../features/admin/api'
+  formatDate,
+  parsePage,
+  pickAllowed,
+  PLAN_LABELS,
+  PLAN_VALUES,
+  SIGNUP_SOURCE_LABELS,
+} from '../../features/admin/labels'
+import { UserActionCell, UserPlanCell, UserStatusBadge } from '../../features/admin/UserCells'
 import type { SignupSource } from '../../features/auth/api'
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
-import { Modal } from '../../components/ui/Modal'
-import { extractErrorMessage } from '../../lib/api'
 
-const PLAN_OPTIONS: { value: AdminPlan; label: string; description: string }[] = [
-  { value: 'free', label: '무료', description: '항목 5개' },
-  { value: 'basic', label: '베이직', description: '항목 15개' },
-  { value: 'pro', label: '프로', description: '항목 무제한' },
-]
+const SIGNUP_SOURCE_VALUES: SignupSource[] = ['email', 'kakao', 'google']
+const ACTIVE_VALUES = ['true', 'false'] as const
 
-const PLAN_BADGE_STYLES: Record<AdminPlan, string> = {
-  free: 'bg-slate-100 text-slate-600',
-  basic: 'bg-brand-light text-brand',
-  pro: 'bg-sidebar text-white',
-}
+const selectClass =
+  'rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 outline-none focus:border-brand'
 
-function planLabel(plan: AdminPlan): string {
-  return PLAN_OPTIONS.find((option) => option.value === plan)?.label ?? plan
-}
-
-/** 요금제 배지 아래에 붙는 한 줄 설명. 무료는 덧붙일 말이 없다. */
-function planNote(user: AdminUser): string | null {
-  if (user.plan === 'free') return null
-  if (user.is_plan_admin_granted) {
-    return user.plan_period_end ? `관리자 부여 · ${user.plan_period_end}까지` : '관리자 부여 · 기간 제한 없음'
-  }
-  return user.plan_period_end ? `결제 중 · 다음 결제 ${user.plan_period_end}` : '결제 중'
-}
-
-function GrantPlanModal({ user, onClose }: { user: AdminUser; onClose: () => void }) {
-  const [plan, setPlan] = useState<AdminPlan>(user.plan)
-  // 관리자가 부여했던 종료일만 이어받는다 — 결제 중인 구독의 날짜는 다음 결제일이라 뜻이 다르다.
-  const [periodEnd, setPeriodEnd] = useState(
-    user.is_plan_admin_granted ? (user.plan_period_end ?? '') : '',
-  )
-  const [error, setError] = useState<string | null>(null)
-  const { mutate, isPending } = useGrantUserPlanMutation()
-
-  const today = format(new Date(), 'yyyy-MM-dd')
-  const isPaidPlan = plan !== 'free'
-  // 실제로 결제 중인 구독을 덮어쓰면 자동 결제가 멈춘다는 걸 알려준다.
-  const isOverwritingPaidSubscription = user.plan !== 'free' && !user.is_plan_admin_granted
-
-  function handleSave() {
-    setError(null)
-    mutate(
-      { id: user.id, plan, periodEnd: isPaidPlan && periodEnd ? periodEnd : null },
-      {
-        onSuccess: onClose,
-        onError: (mutationError) =>
-          setError(extractErrorMessage(mutationError, '요금제를 바꾸지 못했습니다. 입력 값을 확인해주세요.')),
-      },
-    )
-  }
-
-  return (
-    <Modal onClose={onClose}>
-      <h2 className="text-lg font-semibold text-slate-900">요금제 변경</h2>
-      <p className="mt-1 text-sm text-slate-500">{user.email}</p>
-
-      <div className="mt-4 flex flex-col gap-2">
-        {PLAN_OPTIONS.map((option) => (
-          <label
-            key={option.value}
-            className={`flex cursor-pointer items-center justify-between rounded-xl border px-3.5 py-2.5 text-sm transition ${
-              plan === option.value ? 'border-brand bg-brand-light' : 'border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            <span className="flex items-center gap-2.5">
-              <input
-                type="radio"
-                name="plan"
-                value={option.value}
-                checked={plan === option.value}
-                onChange={() => setPlan(option.value)}
-                className="accent-brand"
-              />
-              <span className="font-medium text-slate-900">{option.label}</span>
-            </span>
-            <span className="text-slate-500">{option.description}</span>
-          </label>
-        ))}
-      </div>
-
-      {isPaidPlan && (
-        <div className="mt-4 flex flex-col gap-1">
-          <label htmlFor="plan-period-end" className="text-sm font-medium text-slate-700">
-            종료일(선택)
-          </label>
-          <input
-            id="plan-period-end"
-            type="date"
-            min={today}
-            value={periodEnd}
-            onChange={(event) => setPeriodEnd(event.target.value)}
-            className="rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none"
-          />
-          <p className="text-xs text-slate-500">
-            {periodEnd
-              ? `${periodEnd}까지 유지되고 다음 날 무료 플랜으로 돌아갑니다.`
-              : '비워두면 다시 바꿀 때까지 계속 유지됩니다.'}
-          </p>
-        </div>
-      )}
-
-      <p className="mt-4 text-xs text-slate-500">결제 없이 바로 적용됩니다.</p>
-      {isOverwritingPaidSubscription && (
-        <p className="mt-1 text-xs text-amber-600">
-          이 회원은 결제 중인 구독이 있습니다. 저장하면 자동 결제가 멈춥니다.
-        </p>
-      )}
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-
-      <div className="mt-5 flex justify-end gap-3">
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-        >
-          취소
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isPending}
-          className="rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-hover disabled:opacity-50"
-        >
-          저장
-        </button>
-      </div>
-    </Modal>
-  )
-}
-
-function UserPlanCell({ user }: { user: AdminUser }) {
-  const [isEditing, setIsEditing] = useState(false)
-  const note = planNote(user)
-
-  return (
-    <>
-      <div className="flex items-center gap-2">
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${PLAN_BADGE_STYLES[user.plan]}`}>
-          {planLabel(user.plan)}
-        </span>
-        <button
-          type="button"
-          onClick={() => setIsEditing(true)}
-          className="text-xs font-medium text-brand hover:text-brand-hover"
-        >
-          변경
-        </button>
-      </div>
-      {note && <p className="mt-1 text-xs text-slate-500">{note}</p>}
-      {isEditing && <GrantPlanModal user={user} onClose={() => setIsEditing(false)} />}
-    </>
-  )
-}
-
-const SIGNUP_SOURCE_LABELS: Record<SignupSource, string> = {
-  email: '이메일',
-  kakao: '카카오',
-  google: '구글',
-}
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
-}
-
-function UserActionCell({ user }: { user: AdminUser }) {
-  const [isConfirming, setIsConfirming] = useState(false)
-  const { mutate, isPending } = useSetUserActiveMutation()
-
-  if (user.is_staff) {
-    return <span className="text-xs text-slate-400">관리자</span>
-  }
-
-  if (!user.is_active) {
-    return (
-      <button
-        type="button"
-        onClick={() => mutate({ id: user.id, isActive: true })}
-        disabled={isPending}
-        className="text-xs font-medium text-brand hover:text-brand-hover disabled:opacity-50"
-      >
-        재활성화
-      </button>
-    )
-  }
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setIsConfirming(true)}
-        className="text-xs font-medium text-red-600 hover:text-red-500"
-      >
-        비활성화
-      </button>
-      {isConfirming && (
-        <ConfirmDialog
-          title="이 회원을 비활성화할까요?"
-          description={`${user.email} 계정이 더 이상 로그인할 수 없게 됩니다. 나중에 다시 활성화할 수 있어요.`}
-          confirmLabel="비활성화"
-          isConfirming={isPending}
-          onConfirm={() => {
-            mutate(
-              { id: user.id, isActive: false },
-              { onSuccess: () => setIsConfirming(false) },
-            )
-          }}
-          onCancel={() => setIsConfirming(false)}
-        />
-      )}
-    </>
-  )
-}
+type FilterKey = 'search' | 'plan' | 'signup_source' | 'is_active'
 
 export function AdminUsersPage() {
-  const [search, setSearch] = useState('')
-  const { data: users, isLoading } = useAdminUsersQuery(search)
+  // 검색어·필터·페이지는 URL 쿼리에 둔다 — 개요 화면 카드가 `?is_active=false`처럼
+  // 필터가 걸린 상태로 들어올 수 있고, 회원 상세를 보고 뒤로 와도 유지된다.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const search = searchParams.get('search') ?? ''
+  const plan = pickAllowed(searchParams.get('plan'), PLAN_VALUES)
+  const signupSource = pickAllowed(searchParams.get('signup_source'), SIGNUP_SOURCE_VALUES)
+  const activeParam = pickAllowed(searchParams.get('is_active'), ACTIVE_VALUES)
+  const page = parsePage(searchParams.get('page'))
+
+  const { data, isLoading, isError } = useAdminUsersQuery({
+    search,
+    plan,
+    signupSource,
+    isActive: activeParam === undefined ? undefined : activeParam === 'true',
+    page,
+  })
+  const users = data?.results
+  const hasFilter = Boolean(search || plan || signupSource || activeParam)
+
+  function setFilter(key: FilterKey, value: string) {
+    const next = new URLSearchParams(searchParams)
+    if (value) {
+      next.set(key, value)
+    } else {
+      next.delete(key)
+    }
+    // 조건이 바뀌면 결과 수도 바뀌므로 첫 페이지부터 다시 본다.
+    next.delete('page')
+    setSearchParams(next, { replace: true })
+  }
+
+  function setPage(nextPage: number) {
+    const next = new URLSearchParams(searchParams)
+    if (nextPage > 1) {
+      next.set('page', String(nextPage))
+    } else {
+      next.delete('page')
+    }
+    setSearchParams(next)
+  }
 
   return (
     <div>
       <h1 className="text-xl font-semibold text-slate-900">회원 관리</h1>
-      <p className="mt-1 text-sm text-slate-500">가입한 회원을 조회하고 요금제와 계정 상태를 관리합니다. 총 {users?.length ?? 0}명.</p>
+      <p className="mt-1 text-sm text-slate-500">
+        가입한 회원을 조회하고 요금제와 계정 상태를 관리합니다. {hasFilter ? '조건에 맞는 회원' : '총'}{' '}
+        {data?.count ?? 0}명.
+      </p>
 
-      <input
-        type="text"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="이메일 또는 이름으로 검색"
-        className="mt-4 w-full max-w-sm rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand"
-      />
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setFilter('search', e.target.value)}
+          placeholder="이메일 또는 이름으로 검색"
+          aria-label="이메일 또는 이름으로 검색"
+          className="w-full max-w-sm rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-brand"
+        />
+        <select
+          value={plan ?? ''}
+          onChange={(e) => setFilter('plan', e.target.value)}
+          aria-label="요금제"
+          className={selectClass}
+        >
+          <option value="">모든 요금제</option>
+          {PLAN_VALUES.map((value) => (
+            <option key={value} value={value}>
+              {PLAN_LABELS[value]}
+            </option>
+          ))}
+        </select>
+        <select
+          value={signupSource ?? ''}
+          onChange={(e) => setFilter('signup_source', e.target.value)}
+          aria-label="가입 경로"
+          className={selectClass}
+        >
+          <option value="">모든 가입 경로</option>
+          {SIGNUP_SOURCE_VALUES.map((value) => (
+            <option key={value} value={value}>
+              {SIGNUP_SOURCE_LABELS[value]}
+            </option>
+          ))}
+        </select>
+        <select
+          value={activeParam ?? ''}
+          onChange={(e) => setFilter('is_active', e.target.value)}
+          aria-label="계정 상태"
+          className={selectClass}
+        >
+          <option value="">모든 상태</option>
+          <option value="true">활성</option>
+          <option value="false">비활성</option>
+        </select>
+        {hasFilter && (
+          <button
+            type="button"
+            onClick={() => setSearchParams({}, { replace: true })}
+            className="text-sm font-medium text-brand hover:text-brand-hover"
+          >
+            필터 초기화
+          </button>
+        )}
+      </div>
 
       <div className="mt-4 overflow-x-auto rounded-2xl bg-white shadow-sm shadow-slate-200/70">
         <table className="w-full min-w-[900px] text-left text-sm">
@@ -267,7 +149,14 @@ export function AdminUsersPage() {
                 </td>
               </tr>
             )}
-            {!isLoading && users?.length === 0 && (
+            {isError && (
+              <tr>
+                <td colSpan={8} className="px-4 py-6 text-center text-red-600">
+                  회원 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
+                </td>
+              </tr>
+            )}
+            {!isLoading && !isError && users?.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-4 py-6 text-center text-slate-500">
                   조건에 맞는 회원이 없습니다.
@@ -276,7 +165,11 @@ export function AdminUsersPage() {
             )}
             {users?.map((u) => (
               <tr key={u.id} className="border-b border-slate-50 last:border-0">
-                <td className="px-4 py-3 text-slate-900">{u.email}</td>
+                <td className="px-4 py-3">
+                  <Link to={`/admin/users/${u.id}`} className="font-medium text-slate-900 hover:text-brand">
+                    {u.email}
+                  </Link>
+                </td>
                 <td className="px-4 py-3 text-slate-700">{u.name}</td>
                 <td className="px-4 py-3 text-slate-700">{SIGNUP_SOURCE_LABELS[u.signup_source]}</td>
                 <td className="px-4 py-3 text-slate-700">{u.is_email_verified ? '완료' : '미완료'}</td>
@@ -284,13 +177,7 @@ export function AdminUsersPage() {
                   <UserPlanCell user={u} />
                 </td>
                 <td className="px-4 py-3">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      u.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
-                    }`}
-                  >
-                    {u.is_active ? '활성' : '비활성'}
-                  </span>
+                  <UserStatusBadge user={u} />
                 </td>
                 <td className="px-4 py-3 text-slate-500">{formatDate(u.date_joined)}</td>
                 <td className="px-4 py-3">
@@ -301,6 +188,8 @@ export function AdminUsersPage() {
           </tbody>
         </table>
       </div>
+
+      <Pagination page={page} pageSize={ADMIN_PAGE_SIZE} totalCount={data?.count ?? 0} onChange={setPage} />
     </div>
   )
 }

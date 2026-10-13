@@ -1,10 +1,10 @@
 """관리자 대시보드(회원/구독/매출 요약)용 전체 서비스 집계.
 
 items/services/stats.py와 같은 이유로 전부 DB 집계 쿼리로 구성한다 —
-유저 수가 늘어도 Python 레벨 반복 없이 고정된 쿼리 수(6개)로 끝난다.
+유저 수가 늘어도 Python 레벨 반복 없이 고정된 쿼리 수로 끝난다.
 """
 
-from datetime import date
+from datetime import date, timedelta
 
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
@@ -13,8 +13,11 @@ from apps.accounts.models import User
 from apps.billing.models import Payment, Subscription
 from apps.items.models import ExpiryItem
 from apps.items.services.dates import add_months
+from apps.support.models import Inquiry
 
 SIGNUP_TREND_MONTHS = 6
+# 관리자가 부여한 플랜이 이 일수 안에 끝나면 "곧 만료"로 센다.
+GRANT_EXPIRING_SOON_DAYS = 7
 
 
 def _monthly_signups(*, today: date) -> list[dict]:
@@ -61,9 +64,12 @@ def get_admin_overview(*, today: date | None = None) -> dict:
         status=Payment.Status.SUCCEEDED, paid_at__gte=this_month_start
     ).aggregate(total=Sum("amount"))
 
+    granted = Subscription.objects.filter(is_admin_granted=True)
+
     return {
         "users": {
             "total": User.objects.count(),
+            "inactive": User.objects.filter(is_active=False).count(),
             "new_this_month": User.objects.filter(date_joined__gte=this_month_start).count(),
             "by_signup_source": {
                 "email": users_by_source.get(User.SignupSource.EMAIL, 0),
@@ -77,6 +83,15 @@ def get_admin_overview(*, today: date | None = None) -> dict:
         },
         "subscriptions": {
             "by_plan": _plan_distribution(),
+            "admin_granted": granted.count(),
+            # 종료일이 없는 부여(기간 제한 없음)는 만료되지 않으므로 빠진다.
+            "grants_expiring_soon": granted.filter(
+                current_period_end__gte=today,
+                current_period_end__lte=today + timedelta(days=GRANT_EXPIRING_SOON_DAYS),
+            ).count(),
+        },
+        "inquiries": {
+            "unanswered": Inquiry.objects.filter(is_answered=False).count(),
         },
         "revenue": {
             "total": revenue["total"] or 0,

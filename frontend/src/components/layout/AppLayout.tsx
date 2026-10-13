@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import type { Subscription } from '../../features/billing/api'
+import { useUnansweredInquiryCountQuery } from '../../features/admin/hooks'
 import { useSubscriptionQuery } from '../../features/billing/hooks'
 import { useAuth } from '../../features/auth/useAuth'
 import { useUnreadNotificationCountQuery } from '../../features/notifications/hooks'
@@ -11,7 +12,9 @@ import {
   ChartIcon,
   ClipboardIcon,
   GearIcon,
+  HistoryIcon,
   HomeIcon,
+  MegaphoneIcon,
   MessageIcon,
   PlusCircleIcon,
   UsersIcon,
@@ -35,6 +38,8 @@ const ADMIN_NAV_ITEMS = [
   { to: '/admin/users', label: '회원 관리', icon: UsersIcon },
   { to: '/admin/payments', label: '결제 내역', icon: WonIcon },
   { to: '/admin/inquiries', label: '문의 관리', icon: MessageIcon },
+  { to: '/admin/notices', label: '공지 발송', icon: MegaphoneIcon },
+  { to: '/admin/logs', label: '작업 기록', icon: HistoryIcon },
 ]
 
 const PLAN_LABELS: Record<Subscription['plan'], string> = {
@@ -53,6 +58,8 @@ export function AppLayout() {
   const { user, logout } = useAuth()
   const { data: subscription } = useSubscriptionQuery()
   const { data: unreadCount = 0 } = useUnreadNotificationCountQuery()
+  // 관리자가 아니면 요청 자체를 보내지 않는다(보내도 403이다).
+  const { data: unansweredCount = 0 } = useUnansweredInquiryCountQuery(Boolean(user?.is_staff))
   const [isConfirmingLogout, setIsConfirmingLogout] = useState(false)
 
   return (
@@ -108,6 +115,14 @@ export function AppLayout() {
               >
                 <item.icon className="shrink-0" />
                 {item.label}
+                {item.to === '/admin/inquiries' && unansweredCount > 0 && (
+                  <span
+                    className="ml-auto rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-white"
+                    aria-label={`미답변 문의 ${unansweredCount}건`}
+                  >
+                    {unansweredCount > 99 ? '99+' : unansweredCount}
+                  </span>
+                )}
               </NavLink>
             ))}
           </nav>

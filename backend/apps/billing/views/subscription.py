@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import User
-from apps.billing.models import Payment
+from apps.billing.models import Payment, Subscription
 from apps.billing.serializers import (
     AdminGrantPlanSerializer,
     AdminPaymentSerializer,
@@ -23,6 +23,9 @@ from apps.billing.services import (
     grant_plan,
     start_subscription,
 )
+from apps.core.models import AdminActionLog
+from apps.core.pagination import AdminPagination
+from apps.core.services import record_admin_action
 
 
 class SubscriptionView(APIView):
@@ -83,7 +86,8 @@ class AdminPaymentListView(generics.ListAPIView):
 
     permission_classes = [IsAdminUser]
     serializer_class = AdminPaymentSerializer
-    queryset = Payment.objects.select_related("subscription__user").all()
+    pagination_class = AdminPagination
+    queryset = Payment.objects.select_related("subscription__user").order_by("-created_at", "-id")
 
 
 class AdminUserSubscriptionView(APIView):
@@ -96,6 +100,7 @@ class AdminUserSubscriptionView(APIView):
         user = get_object_or_404(User, pk=user_id)
         serializer = AdminGrantPlanSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        before = _grant_state(get_or_create_subscription(user))
         try:
             subscription = grant_plan(
                 user,
@@ -104,4 +109,25 @@ class AdminUserSubscriptionView(APIView):
             )
         except SubscriptionError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        # 같은 내용으로 다시 저장한 경우는 한 일이 없으므로 기록하지 않는다.
+        if _grant_state(subscription) != before:
+            record_admin_action(
+                actor=request.user,
+                action=AdminActionLog.Action.PLAN_GRANT,
+                target_user=user,
+                summary=_describe_grant(subscription),
+            )
         return Response(AdminSubscriptionSerializer(subscription).data)
+
+
+def _grant_state(subscription: Subscription) -> tuple:
+    return (subscription.plan, subscription.is_admin_granted, subscription.current_period_end)
+
+
+def _describe_grant(subscription: Subscription) -> str:
+    plan_label = f"{subscription.get_plan_display()} 플랜"
+    if subscription.plan == Subscription.Plan.FREE:
+        return plan_label
+    if subscription.current_period_end:
+        return f"{plan_label} · {subscription.current_period_end}까지"
+    return f"{plan_label} · 기간 제한 없음"

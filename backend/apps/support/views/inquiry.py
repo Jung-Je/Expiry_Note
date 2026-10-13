@@ -1,6 +1,9 @@
 from rest_framework import generics
 from rest_framework.permissions import IsAdminUser
 
+from apps.core.models import AdminActionLog
+from apps.core.pagination import AdminPagination
+from apps.core.services import record_admin_action
 from apps.support.models import Inquiry
 from apps.support.serializers import AdminInquirySerializer, InquirySerializer
 from apps.support.services import create_inquiry
@@ -31,11 +34,31 @@ class InquiryListCreateView(generics.ListCreateAPIView):
 
 
 class AdminInquiryListView(generics.ListAPIView):
-    """관리자 화면의 문의 목록. 스태프 계정만 접근 가능."""
+    """관리자 화면의 문의 목록. 스태프 계정만 접근 가능.
+
+    `?answered=true|false`(답변 여부)와 `?category=`로 좁힐 수 있다.
+    모르는 값은 무시한다.
+    """
 
     permission_classes = [IsAdminUser]
     serializer_class = AdminInquirySerializer
-    queryset = Inquiry.objects.select_related("user").all()
+    pagination_class = AdminPagination
+
+    def get_queryset(self):
+        queryset = Inquiry.objects.select_related("user").order_by("-created_at", "-id")
+        params = self.request.query_params
+
+        answered = (params.get("answered") or "").lower()
+        if answered in ("1", "true"):
+            queryset = queryset.filter(is_answered=True)
+        elif answered in ("0", "false"):
+            queryset = queryset.filter(is_answered=False)
+
+        category = params.get("category")
+        if category in Inquiry.Category.values:
+            queryset = queryset.filter(category=category)
+
+        return queryset
 
 
 class AdminInquiryDetailView(generics.RetrieveUpdateAPIView):
@@ -44,3 +67,15 @@ class AdminInquiryDetailView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAdminUser]
     serializer_class = AdminInquirySerializer
     queryset = Inquiry.objects.select_related("user").all()
+
+    def perform_update(self, serializer):
+        previous_reply = serializer.instance.reply
+        inquiry = serializer.save()
+        # 답변 내용이 실제로 바뀐 경우만 기록한다(처음 등록 + 이후 수정 모두).
+        if inquiry.reply != previous_reply:
+            record_admin_action(
+                actor=self.request.user,
+                action=AdminActionLog.Action.INQUIRY_REPLY,
+                target_user=inquiry.user,
+                summary=inquiry.title,
+            )

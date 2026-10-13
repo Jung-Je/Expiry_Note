@@ -13,6 +13,7 @@ const TYPE_LABELS: Record<Notification['type'], string> = {
   payment: '결제 예정',
   inquiry_reply: '문의 답변',
   plan_change: '요금제',
+  notice: '공지',
 }
 
 // 항목 목록(ItemsPage)의 필터 칩과 같은 모양.
@@ -20,12 +21,13 @@ const chipBase = 'rounded-full px-3 py-1.5 text-sm font-medium transition'
 const chipActive = `${chipBase} bg-brand text-white`
 const chipInactive = `${chipBase} bg-white text-slate-600 shadow-sm shadow-slate-200/70 hover:text-slate-900`
 
-// 상세 창에서 관련 화면으로 가는 버튼의 문구.
-const LINK_LABELS: Record<Notification['type'], string> = {
+// 상세 창에서 관련 화면으로 가는 버튼의 문구. 공지는 이어서 볼 화면이 없다.
+const LINK_LABELS: Record<Notification['type'], string | null> = {
   expiry: '항목 보기',
   payment: '항목 보기',
   inquiry_reply: '답변 보기',
   plan_change: '요금제 보기',
+  notice: null,
 }
 
 function formatReceivedAt(value: string): string {
@@ -38,7 +40,10 @@ function formatReceivedAt(value: string): string {
   })
 }
 
-function notificationLinkTo(notification: Notification): string {
+function notificationLinkTo(notification: Notification): string | null {
+  if (notification.type === 'notice') {
+    return null
+  }
   if (notification.type === 'inquiry_reply') {
     return '/settings?tab=inquiry'
   }
@@ -55,6 +60,9 @@ function NotificationDetailModal({
   notification: Notification
   onClose: () => void
 }) {
+  const linkTo = notificationLinkTo(notification)
+  const linkLabel = LINK_LABELS[notification.type]
+
   return (
     <Modal onClose={onClose}>
       <div className="flex items-center gap-2">
@@ -79,12 +87,14 @@ function NotificationDetailModal({
         >
           닫기
         </button>
-        <Link
-          to={notificationLinkTo(notification)}
-          className="flex-1 rounded-xl bg-brand px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-brand-hover"
-        >
-          {LINK_LABELS[notification.type]}
-        </Link>
+        {linkTo && linkLabel && (
+          <Link
+            to={linkTo}
+            className="flex-1 rounded-xl bg-brand px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-brand-hover"
+          >
+            {linkLabel}
+          </Link>
+        )}
       </div>
     </Modal>
   )

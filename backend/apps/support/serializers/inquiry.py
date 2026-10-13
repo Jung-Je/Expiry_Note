@@ -22,6 +22,8 @@ class AdminInquirySerializer(serializers.ModelSerializer):
     reply를 쓰면 is_answered가 그 값의 존재 여부로 같이 갱신된다.
     """
 
+    # 문의 목록에서 그 회원의 상세 화면으로 바로 넘어갈 수 있게 id도 내려준다.
+    user_id = serializers.IntegerField(read_only=True)
     user_email = serializers.EmailField(source="user.email", read_only=True)
     user_name = serializers.CharField(source="user.name", read_only=True)
 
@@ -29,6 +31,7 @@ class AdminInquirySerializer(serializers.ModelSerializer):
         model = Inquiry
         fields = [
             "id",
+            "user_id",
             "user_email",
             "user_name",
             "category",
@@ -40,6 +43,7 @@ class AdminInquirySerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "user_id",
             "user_email",
             "user_name",
             "category",
