@@ -5,8 +5,11 @@ import { AdminRoute } from './features/auth/AdminRoute'
 import { AuthProvider } from './features/auth/AuthContext'
 import { ProtectedRoute } from './features/auth/ProtectedRoute'
 import { AdminInquiriesPage } from './pages/admin/AdminInquiriesPage'
+import { AdminLogsPage } from './pages/admin/AdminLogsPage'
+import { AdminNoticesPage } from './pages/admin/AdminNoticesPage'
 import { AdminOverviewPage } from './pages/admin/AdminOverviewPage'
 import { AdminPaymentsPage } from './pages/admin/AdminPaymentsPage'
+import { AdminUserDetailPage } from './pages/admin/AdminUserDetailPage'
 import { AdminUsersPage } from './pages/admin/AdminUsersPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ItemDetailPage } from './pages/ItemDetailPage'
@@ -59,8 +62,11 @@ export default function App() {
                 <Route element={<AdminRoute />}>
                   <Route path="/admin" element={<AdminOverviewPage />} />
                   <Route path="/admin/users" element={<AdminUsersPage />} />
+                  <Route path="/admin/users/:id" element={<AdminUserDetailPage />} />
                   <Route path="/admin/payments" element={<AdminPaymentsPage />} />
                   <Route path="/admin/inquiries" element={<AdminInquiriesPage />} />
+                  <Route path="/admin/notices" element={<AdminNoticesPage />} />
+                  <Route path="/admin/logs" element={<AdminLogsPage />} />
                 </Route>
               </Route>
             </Route>

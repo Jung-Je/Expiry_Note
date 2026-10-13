@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 from rest_framework.test import APIClient
@@ -7,6 +7,7 @@ from apps.accounts.models import User
 from apps.billing.models import Payment, Subscription
 from apps.core.services import get_admin_overview
 from apps.items.models import ExpiryItem
+from apps.support.models import Inquiry
 
 
 @pytest.fixture
@@ -93,3 +94,48 @@ class TestGetAdminOverview:
         overview = get_admin_overview()
 
         assert overview["items"]["total"] == 1
+
+    @pytest.mark.django_db
+    def test_counts_inactive_users(self, db):
+        User.objects.create_user(email="active@example.com", name="활성")
+        User.objects.create_user(email="inactive@example.com", name="비활성", is_active=False)
+
+        overview = get_admin_overview()
+
+        assert overview["users"]["inactive"] == 1
+
+    @pytest.mark.django_db
+    def test_counts_only_unanswered_inquiries(self, db):
+        user = User.objects.create_user(email="asker@example.com", name="문의자")
+        Inquiry.objects.create(user=user, category="bug", title="미답변", content="내용")
+        Inquiry.objects.create(
+            user=user, category="bug", title="답변됨", content="내용", is_answered=True
+        )
+
+        overview = get_admin_overview()
+
+        assert overview["inquiries"]["unanswered"] == 1
+
+    @pytest.mark.django_db
+    def test_counts_admin_granted_plans_and_those_expiring_soon(self, db):
+        today = date(2026, 10, 13)
+
+        def grant(email: str, period_end: date | None, *, granted: bool = True) -> None:
+            user = User.objects.create_user(email=email, name="회원")
+            Subscription.objects.create(
+                user=user,
+                plan=Subscription.Plan.PRO,
+                is_admin_granted=granted,
+                current_period_end=period_end,
+            )
+
+        grant("soon@example.com", today + timedelta(days=7))
+        grant("later@example.com", today + timedelta(days=8))
+        grant("forever@example.com", None)
+        # 결제 중인 구독의 다음 결제일은 부여 만료가 아니다.
+        grant("paying@example.com", today + timedelta(days=1), granted=False)
+
+        overview = get_admin_overview(today=today)
+
+        assert overview["subscriptions"]["admin_granted"] == 3
+        assert overview["subscriptions"]["grants_expiring_soon"] == 1

@@ -1,22 +1,10 @@
-import { useAdminPaymentsQuery } from '../../features/admin/hooks'
-import type { AdminPlan, PaymentStatus } from '../../features/admin/api'
+import { useState } from 'react'
+import { Pagination } from '../../components/ui/Pagination'
+import { ADMIN_PAGE_SIZE } from '../../features/admin/api'
+import type { PaymentStatus } from '../../features/admin/api'
+import { useAdminOverviewQuery, useAdminPaymentsQuery } from '../../features/admin/hooks'
+import { formatDateTime, PLAN_LABELS } from '../../features/admin/labels'
 import { formatAmount } from '../../features/items/format'
-
-const PLAN_LABELS: Record<AdminPlan, string> = {
-  free: '무료',
-  basic: '베이직',
-  pro: '프로',
-}
-
-function formatDateTime(value: string): string {
-  return new Date(value).toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 function StatusBadge({ status }: { status: PaymentStatus }) {
   const isSucceeded = status === 'succeeded'
@@ -32,16 +20,17 @@ function StatusBadge({ status }: { status: PaymentStatus }) {
 }
 
 export function AdminPaymentsPage() {
-  const { data: payments, isLoading } = useAdminPaymentsQuery()
-  const totalRevenue = (payments ?? [])
-    .filter((p) => p.status === 'succeeded')
-    .reduce((sum, p) => sum + p.amount, 0)
+  const [page, setPage] = useState(1)
+  const { data, isLoading, isError } = useAdminPaymentsQuery(page)
+  // 목록은 한 페이지씩만 받으므로 합계는 여기서 더하지 않고 개요 집계를 쓴다.
+  const { data: overview } = useAdminOverviewQuery()
+  const payments = data?.results
 
   return (
     <div>
       <h1 className="text-xl font-semibold text-slate-900">결제 내역</h1>
       <p className="mt-1 text-sm text-slate-500">
-        총 {payments?.length ?? 0}건 · 성공 결제 합계 {formatAmount(totalRevenue)}
+        총 {data?.count ?? 0}건 · 성공 결제 합계 {formatAmount(overview?.revenue.total ?? 0)}
       </p>
 
       <div className="mt-4 overflow-x-auto rounded-2xl bg-white shadow-sm shadow-slate-200/70">
@@ -64,7 +53,14 @@ export function AdminPaymentsPage() {
                 </td>
               </tr>
             )}
-            {!isLoading && payments?.length === 0 && (
+            {isError && (
+              <tr>
+                <td colSpan={6} className="px-4 py-6 text-center text-red-600">
+                  결제 내역을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
+                </td>
+              </tr>
+            )}
+            {!isLoading && !isError && payments?.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
                   결제 내역이 없습니다.
@@ -91,6 +87,8 @@ export function AdminPaymentsPage() {
           </tbody>
         </table>
       </div>
+
+      <Pagination page={page} pageSize={ADMIN_PAGE_SIZE} totalCount={data?.count ?? 0} onChange={setPage} />
     </div>
   )
 }

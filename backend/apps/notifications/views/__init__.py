@@ -1,3 +1,4 @@
+from apps.notifications.views.notice import AdminNoticeView
 from apps.notifications.views.notification import (
     NotificationListView,
     NotificationMarkAllReadView,
@@ -6,6 +7,7 @@ from apps.notifications.views.notification import (
 from apps.notifications.views.preference import NotificationPreferenceView
 
 __all__ = [
+    "AdminNoticeView",
     "NotificationListView",
     "NotificationMarkAllReadView",
     "NotificationMarkReadView",
