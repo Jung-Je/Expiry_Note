@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import type { Subscription } from '../../features/billing/api'
 import { useSubscriptionQuery } from '../../features/billing/hooks'
 import { useAuth } from '../../features/auth/useAuth'
+import { useUnreadNotificationCountQuery } from '../../features/notifications/hooks'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import {
   BellIcon,
@@ -51,6 +52,7 @@ function planUsageLabel(subscription: Subscription | undefined): string {
 export function AppLayout() {
   const { user, logout } = useAuth()
   const { data: subscription } = useSubscriptionQuery()
+  const { data: unreadCount = 0 } = useUnreadNotificationCountQuery()
   const [isConfirmingLogout, setIsConfirmingLogout] = useState(false)
 
   return (
@@ -76,6 +78,14 @@ export function AppLayout() {
             >
               <item.icon className="shrink-0" />
               {item.label}
+              {item.to === '/notifications' && unreadCount > 0 && (
+                <span
+                  className="ml-auto rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-white"
+                  aria-label={`읽지 않은 알림 ${unreadCount}개`}
+                >
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
