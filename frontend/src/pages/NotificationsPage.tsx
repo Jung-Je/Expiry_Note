@@ -45,7 +45,8 @@ function notificationLinkTo(notification: Notification): string | null {
     return null
   }
   if (notification.type === 'inquiry_reply') {
-    return '/settings?tab=inquiry'
+    // 어느 문의의 답변인지 찾아다니지 않도록 그 문의의 상세 화면으로 바로 보낸다.
+    return notification.inquiry != null ? `/inquiries/${notification.inquiry}` : '/settings?tab=inquiry'
   }
   if (notification.type === 'plan_change') {
     return '/settings?tab=pricing'

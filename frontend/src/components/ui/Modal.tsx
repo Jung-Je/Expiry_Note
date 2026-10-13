@@ -5,7 +5,7 @@ interface ModalProps {
   children: ReactNode
 }
 
-/** 배경 오버레이 + 가운데 카드. ESC나 배경 클릭으로 닫힌다. */
+/** 배경 오버레이 + 가운데 카드. ESC나 배경 클릭으로 닫힌다. 내용이 길면 카드 안에서 스크롤된다. */
 export function Modal({ onClose, children }: ModalProps) {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -26,7 +26,7 @@ export function Modal({ onClose, children }: ModalProps) {
         role="dialog"
         aria-modal="true"
         onClick={(event) => event.stopPropagation()}
-        className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
+        className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-lg bg-white p-6 shadow-xl"
       >
         {children}
       </div>

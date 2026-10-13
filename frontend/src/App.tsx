@@ -12,6 +12,7 @@ import { AdminPaymentsPage } from './pages/admin/AdminPaymentsPage'
 import { AdminUserDetailPage } from './pages/admin/AdminUserDetailPage'
 import { AdminUsersPage } from './pages/admin/AdminUsersPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { InquiryDetailPage } from './pages/InquiryDetailPage'
 import { ItemDetailPage } from './pages/ItemDetailPage'
 import { ItemFormPage } from './pages/ItemFormPage'
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage'
@@ -57,6 +58,7 @@ export default function App() {
                 <Route path="/stats" element={<StatsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/inquiries/:id" element={<InquiryDetailPage />} />
                 <Route path="/pricing" element={<Navigate to="/settings?tab=pricing" replace />} />
 
                 <Route element={<AdminRoute />}>

@@ -33,6 +33,16 @@ class InquiryListCreateView(generics.ListCreateAPIView):
         serializer.instance = inquiry
 
 
+class InquiryDetailView(generics.RetrieveAPIView):
+    """유저 본인의 문의 한 건(내용 + 답변). 문의 답변 알림에서 바로 이 문의로
+    들어올 때 쓴다. 남의 문의는 없는 것과 똑같이 404다."""
+
+    serializer_class = InquirySerializer
+
+    def get_queryset(self):
+        return Inquiry.objects.filter(user=self.request.user)
+
+
 class AdminInquiryListView(generics.ListAPIView):
     """관리자 화면의 문의 목록. 스태프 계정만 접근 가능.
 

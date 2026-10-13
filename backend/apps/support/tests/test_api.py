@@ -115,3 +115,55 @@ class TestInquiryListAPI:
 
         assert response.data[0]["reply"] == "확인했습니다."
         assert response.data[0]["is_answered"] is True
+
+
+class TestInquiryDetailAPI:
+    @pytest.mark.django_db
+    def test_returns_my_inquiry_with_its_reply(self, client, user):
+        inquiry = Inquiry.objects.create(
+            user=user,
+            category="bug",
+            title="오류 신고",
+            content="이렇게 하면 에러가 납니다.",
+            reply="수정했습니다.",
+            is_answered=True,
+        )
+
+        response = client.get(f"/api/v1/support/inquiries/{inquiry.id}/")
+
+        assert response.status_code == 200
+        assert response.data["title"] == "오류 신고"
+        assert response.data["content"] == "이렇게 하면 에러가 납니다."
+        assert response.data["reply"] == "수정했습니다."
+        assert response.data["is_answered"] is True
+
+    @pytest.mark.django_db
+    def test_someone_elses_inquiry_is_404(self, client):
+        other = User.objects.create_user(email="other@example.com", name="다른유저")
+        inquiry = Inquiry.objects.create(
+            user=other, category="bug", title="남의 문의", content="내용"
+        )
+
+        response = client.get(f"/api/v1/support/inquiries/{inquiry.id}/")
+
+        assert response.status_code == 404
+
+    @pytest.mark.django_db
+    def test_unknown_inquiry_is_404(self, client):
+        assert client.get("/api/v1/support/inquiries/999999/").status_code == 404
+
+    @pytest.mark.django_db
+    def test_requires_authentication(self, user):
+        inquiry = Inquiry.objects.create(user=user, category="bug", title="문의", content="내용")
+
+        response = APIClient().get(f"/api/v1/support/inquiries/{inquiry.id}/")
+
+        assert response.status_code == 401
+
+    @pytest.mark.django_db
+    def test_cannot_be_edited_or_deleted_by_the_asker(self, client, user):
+        inquiry = Inquiry.objects.create(user=user, category="bug", title="문의", content="내용")
+        url = f"/api/v1/support/inquiries/{inquiry.id}/"
+
+        assert client.patch(url, {"reply": "셀프 답변"}).status_code == 405
+        assert client.delete(url).status_code == 405
