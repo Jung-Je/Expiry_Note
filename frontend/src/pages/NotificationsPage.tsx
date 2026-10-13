@@ -11,6 +11,7 @@ const TYPE_LABELS: Record<Notification['type'], string> = {
   expiry: '만료 예정',
   payment: '결제 예정',
   inquiry_reply: '문의 답변',
+  plan_change: '요금제',
 }
 
 // 항목 목록(ItemsPage)의 필터 칩과 같은 모양.
@@ -21,6 +22,9 @@ const chipInactive = `${chipBase} bg-white text-slate-600 shadow-sm shadow-slate
 function notificationLinkTo(notification: Notification): string {
   if (notification.type === 'inquiry_reply') {
     return '/settings?tab=inquiry'
+  }
+  if (notification.type === 'plan_change') {
+    return '/settings?tab=pricing'
   }
   return `/items/${notification.item}`
 }

@@ -18,6 +18,7 @@ from apps.billing.services import (
     start_subscription,
 )
 from apps.billing.services.toss import TossAPIError
+from apps.notifications.models import Notification
 
 
 @pytest.fixture
@@ -335,6 +336,60 @@ class TestAdminGrantedPlan:
             subscription = start_subscription(user, auth_key="auth", plan=Subscription.Plan.PRO)
 
         assert subscription.is_admin_granted is False
+
+
+class TestPlanChangeNotification:
+    @pytest.mark.django_db
+    def test_granting_a_plan_notifies_the_user(self, user):
+        period_end = timezone.localdate() + timedelta(days=30)
+
+        grant_plan(user, plan=Subscription.Plan.PRO, period_end=period_end)
+
+        notification = Notification.objects.get(user=user)
+        assert notification.type == Notification.Type.PLAN_CHANGE
+        assert notification.title == "프로 플랜이 적용됐어요"
+        assert str(period_end) in notification.message
+        assert notification.item is None
+
+    @pytest.mark.django_db
+    def test_grant_without_end_date_says_so(self, user):
+        grant_plan(user, plan=Subscription.Plan.BASIC)
+
+        assert Notification.objects.get(user=user).message == "기간 제한 없이 이용할 수 있습니다."
+
+    @pytest.mark.django_db
+    def test_saving_the_same_grant_again_does_not_notify_twice(self, user):
+        grant_plan(user, plan=Subscription.Plan.PRO)
+        grant_plan(user, plan=Subscription.Plan.PRO)
+
+        assert Notification.objects.filter(user=user).count() == 1
+
+    @pytest.mark.django_db
+    def test_setting_free_on_an_already_free_user_does_not_notify(self, user):
+        grant_plan(user, plan=Subscription.Plan.FREE)
+
+        assert not Notification.objects.filter(user=user).exists()
+
+    @pytest.mark.django_db
+    def test_downgrading_to_free_notifies_the_user(self, user):
+        grant_plan(user, plan=Subscription.Plan.PRO)
+
+        grant_plan(user, plan=Subscription.Plan.FREE)
+
+        latest = Notification.objects.filter(user=user).first()
+        assert latest.title == "무료 플랜으로 변경됐어요"
+
+    @pytest.mark.django_db
+    def test_expired_grant_notifies_the_user(self, user):
+        subscription = grant_plan(user, plan=Subscription.Plan.PRO, period_end=timezone.localdate())
+        subscription.current_period_end = timezone.localdate() - timedelta(days=1)
+        subscription.save(update_fields=["current_period_end"])
+
+        renew_due_subscriptions()
+
+        latest = Notification.objects.filter(user=user).first()
+        assert latest.title == "프로 플랜 이용 기간이 끝났어요"
+        assert Notification.objects.filter(user=user).count() == 2
 
 
 class TestDescribeItemLimit:

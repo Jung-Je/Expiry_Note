@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { AuthLayout } from '../../components/layout/AuthLayout'
 import { confirmPasswordReset } from '../../features/auth/api'
+import { extractErrorMessage } from '../../lib/api'
 
 const schema = z
   .object({
@@ -38,8 +39,10 @@ export function ResetPasswordPage() {
         replace: true,
         state: { message: '비밀번호가 재설정되었습니다. 새 비밀번호로 로그인해주세요.' },
       })
-    } catch {
-      setServerError('링크가 유효하지 않거나 만료되었습니다. 다시 요청해주세요.')
+    } catch (error) {
+      setServerError(
+        extractErrorMessage(error, '링크가 유효하지 않거나 만료되었습니다. 다시 요청해주세요.'),
+      )
     }
   }
 

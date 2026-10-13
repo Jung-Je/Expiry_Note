@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.billing.models import Payment, Subscription
+from apps.billing.services.notification import notify_granted_plan_expired, notify_plan_granted
 from apps.billing.services.toss import TossAPIError, charge_billing_key, issue_billing_key
 
 BILLING_PERIOD_DAYS = 30
@@ -164,14 +165,24 @@ def grant_plan(user: User, *, plan: str, period_end: date | None = None) -> Subs
         raise SubscriptionError("종료일은 오늘 이후여야 합니다.")
 
     subscription = get_or_create_subscription(user)
+    new_period_end = period_end if is_paid else None
+    # 같은 내용으로 다시 저장한 경우엔 알림을 또 보내지 않는다.
+    is_changed = (
+        subscription.plan != plan
+        or subscription.is_admin_granted != is_paid
+        or subscription.current_period_end != new_period_end
+    )
+
     subscription.plan = plan
     subscription.status = Subscription.Status.ACTIVE
     subscription.is_admin_granted = is_paid
-    subscription.current_period_end = period_end if is_paid else None
+    subscription.current_period_end = new_period_end
     subscription.canceled_at = None
     subscription.save(
         update_fields=["plan", "status", "is_admin_granted", "current_period_end", "canceled_at"]
     )
+    if is_changed:
+        notify_plan_granted(subscription)
     return subscription
 
 
@@ -252,14 +263,19 @@ def renew_due_subscriptions() -> list[Subscription]:
     ).update(plan=Subscription.Plan.FREE, status=Subscription.Status.ACTIVE)
 
     # 관리자가 기간을 정해 부여한 플랜은 종료일 당일까지 유지하고 다음 날 내린다.
-    Subscription.objects.filter(
+    expired_grants = Subscription.objects.filter(
         is_admin_granted=True,
         current_period_end__lt=today,
-    ).update(
-        plan=Subscription.Plan.FREE,
-        status=Subscription.Status.ACTIVE,
-        is_admin_granted=False,
-        current_period_end=None,
-    )
+    ).select_related("user")
+    for subscription in expired_grants:
+        expired_plan_label = subscription.get_plan_display()
+        subscription.plan = Subscription.Plan.FREE
+        subscription.status = Subscription.Status.ACTIVE
+        subscription.is_admin_granted = False
+        subscription.current_period_end = None
+        subscription.save(
+            update_fields=["plan", "status", "is_admin_granted", "current_period_end"]
+        )
+        notify_granted_plan_expired(subscription, expired_plan_label=expired_plan_label)
 
     return renewed
