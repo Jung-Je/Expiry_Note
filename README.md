@@ -179,10 +179,6 @@ MVP에서는 우선순위에서 제외하며, 출시 이후 다음 기능과 함
 - Vite, React, TypeScript
 - Tailwind CSS, React Router, TanStack Query, React Hook Form + Zod, Recharts
 
-### 모바일 앱
-
-- 추후 확정
-
 ## 프로젝트 구조
 
 모노레포로 관리하며, 스택이 확정된 영역부터 순차적으로 채워 나갑니다.
@@ -191,7 +187,6 @@ MVP에서는 우선순위에서 제외하며, 출시 이후 다음 기능과 함
 Expiry_Note/
 ├── backend/     # Django + DRF API 서버 (uv 관리)
 ├── frontend/    # 웹 프론트엔드 (Vite + React, DRF API 연동)
-├── mobile/      # 모바일 앱 (스택 미정)
 ├── docs/        # 배포 절차, 진행 상황 등 프로젝트 문서
 └── scripts/     # 개발/검증용 스크립트 (dev.sh, check-all.sh 등)
 ```
