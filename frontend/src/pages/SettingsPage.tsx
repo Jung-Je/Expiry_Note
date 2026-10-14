@@ -4,7 +4,6 @@ import { useForm } from 'react-hook-form'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
-import { Toggle } from '../components/ui/Toggle'
 import * as authApi from '../features/auth/api'
 import { useAuth } from '../features/auth/useAuth'
 import type { PaidPlan, Payment, Plan } from '../features/billing/api'
@@ -17,10 +16,6 @@ import {
 import { extractErrorMessage } from '../lib/api'
 // TODO: 사업자 등록 완료 후 아래 import 되돌리기
 // import { startCardRegistration } from '../features/billing/toss'
-import {
-  useNotificationPreferenceQuery,
-  useUpdateNotificationPreferenceMutation,
-} from '../features/notifications/hooks'
 import type { Inquiry, InquiryCategory } from '../features/support/api'
 import { useCreateInquiryMutation, useMyInquiriesQuery } from '../features/support/hooks'
 
@@ -263,34 +258,6 @@ function SecurityTab() {
           onCancel={() => setIsConfirming(false)}
           onConfirm={handleWithdraw}
         />
-      )}
-    </div>
-  )
-}
-
-function NotificationsTab() {
-  const { data: preference, isLoading } = useNotificationPreferenceQuery()
-  const updatePreference = useUpdateNotificationPreferenceMutation()
-
-  return (
-    <div>
-      <h2 className="text-base font-semibold text-slate-900">알림 설정</h2>
-      {isLoading ? (
-        <p className="mt-5 text-sm text-slate-500">불러오는 중...</p>
-      ) : (
-        <div className="mt-5 flex max-w-sm items-center justify-between rounded-xl border border-slate-100 px-4 py-3">
-          <div>
-            <p className="text-sm font-medium text-slate-900">푸시 알림</p>
-            <p className="mt-0.5 text-xs text-slate-400">
-              설정만 저장되며, 실제 발송은 아직 준비 중입니다.
-            </p>
-          </div>
-          <Toggle
-            checked={preference?.push_enabled ?? false}
-            onChange={(checked) => updatePreference.mutate({ push_enabled: checked })}
-            label="푸시 알림"
-          />
-        </div>
       )}
     </div>
   )
@@ -709,11 +676,10 @@ function PricingTab() {
   )
 }
 
-type TabKey = 'profile' | 'security' | 'notifications' | 'inquiry' | 'pricing'
+type TabKey = 'profile' | 'security' | 'inquiry' | 'pricing'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'profile', label: '프로필' },
-  { key: 'notifications', label: '알림' },
   { key: 'inquiry', label: '문의' },
   { key: 'pricing', label: '요금제' },
   { key: 'security', label: '보안' },
@@ -731,7 +697,7 @@ export function SettingsPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold text-slate-900">설정</h1>
-      <p className="mt-2 text-sm text-slate-500">프로필, 알림 등 계정 설정을 관리하세요.</p>
+      <p className="mt-2 text-sm text-slate-500">프로필, 문의, 요금제 등 계정 설정을 관리하세요.</p>
 
       <div className="mt-6 flex gap-6">
         <nav className="flex w-48 shrink-0 flex-col gap-1 rounded-2xl bg-white p-2 shadow-sm shadow-slate-200/70">
@@ -753,7 +719,6 @@ export function SettingsPage() {
 
         <div className="flex-1 rounded-2xl bg-white p-6 shadow-sm shadow-slate-200/70">
           {activeTab === 'profile' && <ProfileTab />}
-          {activeTab === 'notifications' && <NotificationsTab />}
           {activeTab === 'inquiry' && <InquiryTab />}
           {activeTab === 'pricing' && <PricingTab />}
           {activeTab === 'security' && <SecurityTab />}
