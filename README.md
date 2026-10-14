@@ -192,7 +192,7 @@ Expiry_Note/
 ├── backend/     # Django + DRF API 서버 (uv 관리)
 ├── frontend/    # 웹 프론트엔드 (Vite + React, DRF API 연동)
 ├── mobile/      # 모바일 앱 (스택 미정)
-├── docs/        # 기능 명세서, API 명세서 등 프로젝트 문서
+├── docs/        # 배포 절차, 진행 상황 등 프로젝트 문서
 └── scripts/     # 개발/검증용 스크립트 (dev.sh, check-all.sh 등)
 ```
 
@@ -217,8 +217,6 @@ MVP 출시를 통해 다음 경험을 확보하는 것을 목표로 합니다.
 - [x] MVP와 출시 이후 기능 구분
 - [x] 초기 기능 명세서 작성
 - [ ] 기술 스택 최종 확정 (모바일 앱 스택 미정)
-- [ ] 데이터베이스 설계
-- [ ] API 명세 작성
 - [x] 백엔드 개발 (MVP 기능 전 영역 구현 완료 — 진행 상황은 [`docs/progress.md`](docs/progress.md) 참고)
 - [x] 웹 프론트엔드 개발 (전 화면 백엔드 API 연동 완료 — 진행 상황은 [`docs/progress.md`](docs/progress.md) 참고)
 - [ ] 모바일 앱 개발
@@ -226,13 +224,9 @@ MVP 출시를 통해 다음 경험을 확보하는 것을 목표로 합니다.
 
 ## 문서
 
-- 기능 명세서
-- 화면 설계서
-- API 명세서
-- ERD
-- 데이터베이스 테이블 명세서
-
-문서는 프로젝트 진행에 따라 순차적으로 추가할 예정입니다.
+- [배포 절차](docs/deployment.md)
+- [진행 상황](docs/progress.md)
+- 기능 명세서 · 화면 설계서 — 이 README의 기능/화면 절과 Figma로 관리하며, 별도 문서는 아직 없습니다.
 
 ## 라이선스
 
