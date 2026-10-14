@@ -216,10 +216,9 @@ MVP 출시를 통해 다음 경험을 확보하는 것을 목표로 합니다.
 - [x] 웹·앱 UI 초안 작성
 - [x] MVP와 출시 이후 기능 구분
 - [x] 초기 기능 명세서 작성
-- [ ] 기술 스택 최종 확정 (모바일 앱 스택 미정)
+- [x] 기술 스택 최종 확정 (웹 기준 — 모바일 앱은 현재 범위에서 제외)
 - [x] 백엔드 개발 (MVP 기능 전 영역 구현 완료 — 진행 상황은 [`docs/progress.md`](docs/progress.md) 참고)
 - [x] 웹 프론트엔드 개발 (전 화면 백엔드 API 연동 완료 — 진행 상황은 [`docs/progress.md`](docs/progress.md) 참고)
-- [ ] 모바일 앱 개발
 - [x] 테스트 및 배포 (AWS EC2에 웹 서비스 배포 완료 — 절차는 [`docs/deployment.md`](docs/deployment.md), 현황은 [`docs/progress.md`](docs/progress.md) 참고)
 
 ## 문서
