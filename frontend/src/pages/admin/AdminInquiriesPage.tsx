@@ -43,7 +43,7 @@ function InquiryRow({ inquiry }: { inquiry: AdminInquiry }) {
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         aria-expanded={isOpen}
-        className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-slate-50"
+        className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3.5 text-left hover:bg-slate-50"
       >
         <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
           {INQUIRY_CATEGORY_LABELS[inquiry.category]}
@@ -56,10 +56,13 @@ function InquiryRow({ inquiry }: { inquiry: AdminInquiry }) {
         >
           {inquiry.is_answered ? '답변완료' : '미답변'}
         </span>
-        <span className="shrink-0 text-xs text-slate-400">
-          {inquiry.user_name} · {inquiry.user_email}
+        {/* 좁은 화면에서는 작성자·날짜를 둘째 줄로 내린다 — 한 줄에 다 넣으면 제목이 밀려 사라진다. */}
+        <span className="flex w-full min-w-0 gap-3 text-xs text-slate-400 sm:w-auto sm:shrink-0">
+          <span className="min-w-0 truncate">
+            {inquiry.user_name} · {inquiry.user_email}
+          </span>
+          <span className="shrink-0">{formatDateTime(inquiry.created_at)}</span>
         </span>
-        <span className="shrink-0 text-xs text-slate-400">{formatDateTime(inquiry.created_at)}</span>
       </button>
 
       {isOpen && (

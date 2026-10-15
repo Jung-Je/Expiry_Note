@@ -11,10 +11,12 @@ import {
   CalendarIcon,
   ChartIcon,
   ClipboardIcon,
+  CloseIcon,
   GearIcon,
   HistoryIcon,
   HomeIcon,
   MegaphoneIcon,
+  MenuIcon,
   MessageIcon,
   PlusCircleIcon,
   UsersIcon,
@@ -61,13 +63,38 @@ export function AppLayout() {
   // 관리자가 아니면 요청 자체를 보내지 않는다(보내도 403이다).
   const { data: unansweredCount = 0 } = useUnansweredInquiryCountQuery(Boolean(user?.is_staff))
   const [isConfirmingLogout, setIsConfirmingLogout] = useState(false)
+  // 좁은 화면(lg 미만)에서는 사이드바를 숨겨 두고 상단 바의 메뉴 버튼으로 연다.
+  // 메뉴를 하나 누르면 바로 닫는다 — 열린 채로 남으면 이동한 화면을 가린다.
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const closeMenu = () => setIsMenuOpen(false)
 
   return (
     <div className="flex min-h-screen">
-      <aside className="flex w-60 shrink-0 flex-col bg-sidebar p-4 text-slate-200">
-        <div className="px-3 pb-6 pt-2">
-          <p className="text-lg font-bold text-white">만료노트</p>
-          <p className="text-[11px] tracking-wide text-slate-500">BEFORE PAY</p>
+      {isMenuOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-slate-900/40 lg:hidden"
+          onClick={closeMenu}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col overflow-y-auto bg-sidebar p-4 text-slate-200 transition-transform lg:static lg:w-60 lg:translate-x-0 lg:overflow-visible ${
+          isMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex items-start justify-between px-3 pb-6 pt-2">
+          <div>
+            <p className="text-lg font-bold text-white">만료노트</p>
+            <p className="text-[11px] tracking-wide text-slate-500">BEFORE PAY</p>
+          </div>
+          <button
+            type="button"
+            onClick={closeMenu}
+            className="-mr-1 rounded-lg p-1 text-slate-400 hover:text-white lg:hidden"
+            aria-label="메뉴 닫기"
+          >
+            <CloseIcon />
+          </button>
         </div>
         <nav className="flex flex-col gap-1">
           {NAV_ITEMS.map((item) => (
@@ -75,6 +102,7 @@ export function AppLayout() {
               key={item.to}
               to={item.to}
               end={item.end}
+              onClick={closeMenu}
               className={({ isActive }) =>
                 `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                   isActive
@@ -105,6 +133,7 @@ export function AppLayout() {
                 key={item.to}
                 to={item.to}
                 end={item.to === '/admin'}
+                onClick={closeMenu}
                 className={({ isActive }) =>
                   `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                     isActive
@@ -140,9 +169,34 @@ export function AppLayout() {
           </button>
         </div>
       </aside>
-      <main className="flex-1 bg-slate-50 p-8">
-        <Outlet />
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col bg-slate-50">
+        <header className="sticky top-0 z-20 flex items-center gap-3 bg-sidebar px-4 py-3 text-white lg:hidden">
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen(true)}
+            className="-ml-1 rounded-lg p-1 text-slate-300 hover:text-white"
+            aria-label="메뉴 열기"
+          >
+            <MenuIcon width={22} height={22} />
+          </button>
+          <p className="text-base font-bold">만료노트</p>
+          <NavLink
+            to="/notifications"
+            className="relative ml-auto rounded-lg p-1 text-slate-300 hover:text-white"
+            aria-label={unreadCount > 0 ? `알림, 읽지 않은 알림 ${unreadCount}개` : '알림'}
+          >
+            <BellIcon width={22} height={22} />
+            {unreadCount > 0 && (
+              <span className="absolute -right-1 -top-1 min-w-[18px] rounded-full bg-brand px-1 text-center text-[11px] font-semibold leading-[18px] text-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </NavLink>
+        </header>
+        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
+          <Outlet />
+        </main>
+      </div>
 
       {isConfirmingLogout && (
         <ConfirmDialog

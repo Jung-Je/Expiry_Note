@@ -279,14 +279,17 @@ function MyInquiryCard({ inquiry }: { inquiry: Inquiry }) {
   return (
     <li className="rounded-xl border border-slate-100 p-4">
       <div className="flex items-center gap-2">
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+        <span className="shrink-0 whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
           {INQUIRY_CATEGORY_LABELS[inquiry.category]}
         </span>
-        <Link to={`/inquiries/${inquiry.id}`} className="text-sm font-medium text-slate-900 hover:text-brand">
+        <Link
+          to={`/inquiries/${inquiry.id}`}
+          className="min-w-0 truncate text-sm font-medium text-slate-900 hover:text-brand"
+        >
           {inquiry.title}
         </Link>
         <span
-          className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${
+          className={`ml-auto shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
             inquiry.is_answered ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
           }`}
         >
@@ -699,14 +702,15 @@ export function SettingsPage() {
       <h1 className="text-xl font-semibold text-slate-900">설정</h1>
       <p className="mt-2 text-sm text-slate-500">프로필, 문의, 요금제 등 계정 설정을 관리하세요.</p>
 
-      <div className="mt-6 flex gap-6">
-        <nav className="flex w-48 shrink-0 flex-col gap-1 rounded-2xl bg-white p-2 shadow-sm shadow-slate-200/70">
+      {/* 좁은 화면에서는 탭 메뉴를 위쪽 가로 줄로 올리고, 넓은 화면에서만 왼쪽 세로 메뉴로 둔다. */}
+      <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:gap-6">
+        <nav className="flex shrink-0 gap-1 overflow-x-auto rounded-2xl bg-white p-2 shadow-sm shadow-slate-200/70 lg:w-48 lg:flex-col">
           {TABS.map((tab) => (
             <button
               key={tab.key}
               type="button"
               onClick={() => setActiveTab(tab.key)}
-              className={`rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
+              className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
                 activeTab === tab.key
                   ? 'bg-brand-light text-brand'
                   : 'text-slate-600 hover:bg-slate-50'
@@ -717,7 +721,7 @@ export function SettingsPage() {
           ))}
         </nav>
 
-        <div className="flex-1 rounded-2xl bg-white p-6 shadow-sm shadow-slate-200/70">
+        <div className="min-w-0 flex-1 rounded-2xl bg-white p-4 shadow-sm shadow-slate-200/70 sm:p-6">
           {activeTab === 'profile' && <ProfileTab />}
           {activeTab === 'inquiry' && <InquiryTab />}
           {activeTab === 'pricing' && <PricingTab />}
