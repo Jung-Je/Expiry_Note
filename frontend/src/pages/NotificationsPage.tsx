@@ -128,7 +128,7 @@ export function NotificationsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">알림</h1>
           <p className="mt-2 text-sm text-slate-500">알림을 누르면 내용을 확인할 수 있고, 확인한 알림은 읽음으로 바뀝니다.</p>
@@ -137,7 +137,7 @@ export function NotificationsPage() {
           type="button"
           onClick={() => markAllRead.mutate()}
           disabled={!hasUnread || markAllRead.isPending}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+          className="shrink-0 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
         >
           모두 읽음으로 표시
         </button>

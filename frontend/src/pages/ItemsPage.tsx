@@ -59,14 +59,14 @@ export function ItemsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">항목 목록</h1>
           <p className="mt-2 text-sm text-slate-500">등록한 구독과 계약을 한눈에 확인하세요.</p>
         </div>
         <Link
           to="/items/new"
-          className="rounded-xl bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-hover"
+          className="shrink-0 whitespace-nowrap rounded-xl bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-hover"
         >
           + 새 항목 추가
         </Link>

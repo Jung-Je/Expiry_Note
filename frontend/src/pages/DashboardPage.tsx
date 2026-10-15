@@ -121,7 +121,7 @@ export function DashboardPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">대시보드</h1>
           <p className="mt-2 text-sm text-slate-500">
@@ -130,7 +130,7 @@ export function DashboardPage() {
         </div>
         <Link
           to="/items/new"
-          className="rounded-xl bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-hover"
+          className="shrink-0 whitespace-nowrap rounded-xl bg-brand px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-hover"
         >
           + 새 항목 추가
         </Link>
