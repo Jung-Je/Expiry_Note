@@ -21,12 +21,28 @@ interface RetriableConfig extends AxiosRequestConfig {
 
 let refreshPromise: Promise<string> | null = null
 
+const REFRESH_LOCK_NAME = 'expiry-note-token-refresh'
+
+// 재발급은 탭끼리도 한 번에 하나씩만 보낸다. 서버는 재발급할 때마다 refresh
+// token을 새것으로 바꾸고 이전 것을 무효로 만드는데(ROTATE + BLACKLIST), 쿠키는
+// 탭끼리 공유된다. 브라우저를 다시 열어 탭 여러 개가 한꺼번에 뜨면 같은 쿠키로
+// 동시에 재발급을 요청하게 되고, 늦게 도착한 탭은 방금 무효가 된 토큰을 보낸
+// 셈이라 401로 로그아웃돼 버린다. 줄을 세우면 다음 탭은 앞 탭이 받아 둔 새
+// 쿠키로 요청하므로 모두 성공한다. Web Locks를 못 쓰는 브라우저는 예전처럼 바로 보낸다.
+function withRefreshLock<T>(task: () => Promise<T>): Promise<T> {
+  if (typeof navigator === 'undefined' || !('locks' in navigator)) {
+    return task()
+  }
+  return navigator.locks.request(REFRESH_LOCK_NAME, task)
+}
+
 // refresh token은 httpOnly 쿠키로만 오가므로 body 없이 요청만 보내면 된다 —
-// 브라우저가 쿠키를 자동으로 실어 보낸다. 동시에 여러 곳에서 401을 만나도
-// 재발급 요청은 한 번만 나가도록 진행 중인 Promise를 공유한다.
+// 브라우저가 쿠키를 자동으로 실어 보낸다. 같은 탭 안에서 동시에 여러 곳이
+// 401을 만나도 재발급 요청은 한 번만 나가도록 진행 중인 Promise를 공유한다.
 export function refreshAccessToken(): Promise<string> {
-  refreshPromise ??= axios
-    .post(`${baseURL}/auth/token/refresh/`, {}, { withCredentials: true })
+  refreshPromise ??= withRefreshLock(() =>
+    axios.post(`${baseURL}/auth/token/refresh/`, {}, { withCredentials: true }),
+  )
     .then((res) => {
       const access = res.data.access as string
       setAccessToken(access)

@@ -1,6 +1,7 @@
-import { AxiosError, type AxiosResponse } from 'axios'
-import { describe, expect, it } from 'vitest'
-import { extractErrorMessage } from './api'
+import axios, { AxiosError, type AxiosResponse } from 'axios'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { getAccessToken } from '../features/auth/tokenStorage'
+import { extractErrorMessage, refreshAccessToken } from './api'
 
 const FALLBACK = '저장에 실패했습니다.'
 
@@ -46,5 +47,52 @@ describe('extractErrorMessage', () => {
     ['axios 오류가 아닌 값', new Error('boom')],
   ])('%s은 fallback을 쓴다', (_name, error) => {
     expect(extractErrorMessage(error, FALLBACK)).toBe(FALLBACK)
+  })
+})
+
+describe('refreshAccessToken', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  function mockRefreshResponse(access: string) {
+    return vi.spyOn(axios, 'post').mockResolvedValue({ data: { access } } as AxiosResponse)
+  }
+
+  it('탭끼리 줄을 세우도록 Web Locks 안에서 재발급을 요청한다', async () => {
+    const order: string[] = []
+    const request = vi.fn(async (_name: string, task: () => Promise<unknown>) => {
+      order.push('lock')
+      return task()
+    })
+    vi.stubGlobal('navigator', { locks: { request } })
+    vi.spyOn(axios, 'post').mockImplementation(async () => {
+      order.push('post')
+      return { data: { access: 'access-locked' } } as AxiosResponse
+    })
+
+    await expect(refreshAccessToken()).resolves.toBe('access-locked')
+
+    expect(request).toHaveBeenCalledWith('expiry-note-token-refresh', expect.any(Function))
+    expect(order).toEqual(['lock', 'post'])
+    expect(getAccessToken()).toBe('access-locked')
+  })
+
+  it('같은 탭에서 동시에 불러도 재발급 요청은 한 번만 보낸다', async () => {
+    const post = mockRefreshResponse('access-shared')
+
+    const results = await Promise.all([refreshAccessToken(), refreshAccessToken()])
+
+    expect(results).toEqual(['access-shared', 'access-shared'])
+    expect(post).toHaveBeenCalledTimes(1)
+  })
+
+  it('Web Locks가 없는 브라우저에서는 바로 요청한다', async () => {
+    vi.stubGlobal('navigator', {})
+    const post = mockRefreshResponse('access-direct')
+
+    await expect(refreshAccessToken()).resolves.toBe('access-direct')
+    expect(post).toHaveBeenCalledTimes(1)
   })
 })
